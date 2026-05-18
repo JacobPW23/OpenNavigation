@@ -1,0 +1,6 @@
+services:
+  opennavigation:
+    build:
+      context: ./
+    volumes : 
+      - ./src:/app
