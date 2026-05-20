@@ -11,11 +11,11 @@ data/raw/traffic/*.xls
 data/raw/traffic/*.pdf
 
 # Pipeline outputs
-data/processed/
+data/processed/*
 !data/processed/.gitkeep
 !data/processed/zdm_speed_by_road.csv
 
-data/results/
+data/results/*
 !data/results/.gitkeep
 
 # Runtime / cache
