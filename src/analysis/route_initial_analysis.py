@@ -10,6 +10,7 @@ WEATHER_PATH = Path("/app/data/processed/weather_observations")
 TRAFFIC_PATH = Path("/app/data/processed/traffic_measurements")
 SPEED_PATH = Path("/app/data/processed/zdm_speed_by_road.csv")
 OUTPUT_DIR = Path("/app/data/results/route_initial_analysis")
+TRAFFIC_AGG_PATH = Path("/app/data/processed/zdm_traffic_by_road.csv")
 
 
 # Punkty testowe: Dworzec Centralny -> Służewiec/Marynarska.
@@ -102,29 +103,50 @@ def load_weather_factor() -> float:
 
 
 def load_traffic_factors() -> dict[str, float]:
+    if TRAFFIC_AGG_PATH.exists():
+        df = pd.read_csv(TRAFFIC_AGG_PATH)
+
+        if not df.empty and {"road_key", "traffic_factor_max"}.issubset(df.columns):
+            df["road_key_norm"] = df["road_key"].apply(normalize_text)
+
+            traffic_map = (
+                df.dropna(subset=["road_key_norm", "traffic_factor_max"])
+                .set_index("road_key_norm")["traffic_factor_max"]
+                .to_dict()
+            )
+
+            print("Wczytane zagregowane współczynniki APR/ZDM z CSV:")
+            for road, factor in traffic_map.items():
+                print(f"  {road}: {factor}")
+
+            print(f"Liczba ulic z APR/ZDM traffic_factor: {len(traffic_map)}")
+            return traffic_map
+
     if not TRAFFIC_PATH.exists():
-        print("Brak danych ruchu. Używam traffic_factor = 1.0 dla wszystkich dróg.")
+        print("Brak danych ruchu APR. Używam traffic_factor = 1.0 dla wszystkich dróg.")
         return {}
 
     df = pd.read_parquet(TRAFFIC_PATH)
 
     if df.empty:
-        print("Dane ruchu są puste. Używam traffic_factor = 1.0 dla wszystkich dróg.")
+        print("Dane ruchu APR są puste. Używam traffic_factor = 1.0 dla wszystkich dróg.")
         return {}
 
     df = df.drop_duplicates(subset=["station_id", "measurement_time", "road_name", "direction"])
     df["road_key"] = df["road_name"].apply(normalize_text)
 
     traffic_map = (
-        df.groupby("road_key")["traffic_factor"]
+        df.dropna(subset=["road_key", "traffic_factor"])
+        .groupby("road_key")["traffic_factor"]
         .max()
         .to_dict()
     )
 
-    print("Wczytane współczynniki ruchu dla dróg:")
+    print("Wczytane współczynniki ruchu APR/ZDM z Parquet:")
     for road, factor in traffic_map.items():
         print(f"  {road}: {factor}")
 
+    print(f"Liczba ulic z APR/ZDM traffic_factor: {len(traffic_map)}")
     return traffic_map
 
 

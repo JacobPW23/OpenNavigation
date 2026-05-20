@@ -14,6 +14,7 @@ data/raw/traffic/*.pdf
 data/processed/*
 !data/processed/.gitkeep
 !data/processed/zdm_speed_by_road.csv
+!data/processed/zdm_traffic_by_road.csv
 
 data/results/*
 !data/results/.gitkeep
