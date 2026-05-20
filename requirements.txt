@@ -1,0 +1,18 @@
+# Core Big Data stack used in step 3
+pyspark==3.5.1
+confluent-kafka==2.3.0
+kafka-python==2.0.2
+requests==2.32.3
+
+# Data processing and file formats
+pandas==2.2.2
+pyarrow==16.1.0
+openpyxl==3.1.5
+lxml==5.2.2
+beautifulsoup4==4.12.3
+
+# Graph and geospatial processing, aligned with step 2
+networkx==3.3
+shapely==2.0.4
+geopandas==0.14.4
+osmnx==1.9.4
