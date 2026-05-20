@@ -20,6 +20,16 @@ ROUTES = [
         "origin": (52.218662, 21.017080),
         "destination": (52.244974, 21.020670),
     },
+    {
+        "route_name": "Dworzec Centralny -> Stadion Narodowy",
+        "origin": (52.2289, 21.0032),
+        "destination": (52.2465, 21.0457),
+    },
+    {
+        "route_name": "Ochota -> Powiśle",
+        "origin": (52.2109, 20.9714),
+        "destination": (52.2449, 21.0207),
+    },
 ]
 
 
