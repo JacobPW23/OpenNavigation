@@ -100,10 +100,12 @@ traffic_rows = (
     .filter(col("station_id").isNotNull())
     .withColumn(
         "traffic_factor",
-        when(col("avg_speed_kmh") < 20, lit(1.50))
-        .when(col("avg_speed_kmh") < 30, lit(1.30))
-        .when(col("avg_speed_kmh") < 40, lit(1.15))
-        .when(col("vehicle_count") >= 2500, lit(1.20))
+        when(col("avg_speed_kmh").isNotNull() & (col("avg_speed_kmh") < 20), lit(1.50))
+        .when(col("avg_speed_kmh").isNotNull() & (col("avg_speed_kmh") < 30), lit(1.30))
+        .when(col("avg_speed_kmh").isNotNull() & (col("avg_speed_kmh") < 40), lit(1.15))
+        .when(col("vehicle_count") >= 2000, lit(1.40))
+        .when(col("vehicle_count") >= 1500, lit(1.25))
+        .when(col("vehicle_count") >= 1000, lit(1.15))
         .otherwise(lit(1.00))
     )
     .withColumn(
