@@ -1,0 +1,38 @@
+# Raw input data
+data/raw/
+!data/raw/.gitkeep
+!data/raw/traffic/
+!data/raw/traffic/.gitkeep
+
+# Heavy ZDM source files
+data/raw/traffic/speed_reports/
+data/raw/traffic/*.xlsx
+data/raw/traffic/*.xls
+data/raw/traffic/*.pdf
+
+# Pipeline outputs
+data/processed/*
+!data/processed/.gitkeep
+!data/processed/zdm_speed_by_road.csv
+!data/processed/zdm_traffic_by_road.csv
+
+data/results/*
+!data/results/.gitkeep
+
+# Runtime / cache
+spark-warehouse/
+checkpoints/
+*.log
+*.pid
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/

@@ -2,5 +2,13 @@ services:
   opennavigation:
     build:
       context: ./
-    volumes : 
-      - ./src:/app
+    container_name: opennavigation
+    ports:
+      - "9092:9092"   # Kafka broker
+      - "4040:4040"   # Spark UI, when a Spark job is running
+    volumes:
+      - ./src:/app/src
+      - ./data:/app/data
+      - ./docs:/app/docs
+    environment:
+      PYTHONUNBUFFERED: "1"

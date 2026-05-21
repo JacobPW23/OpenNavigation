@@ -1,0 +1,9 @@
+source,station_id,station_name,road_name,direction,lat,lon,measurement_time,period_minutes,vehicle_count,avg_speed_kmh
+sample_zdm_structure,ZDM_001,Aleje Jerozolimskie - centrum,Aleje Jerozolimskie,centrum,52.2297,21.0122,2026-05-20 08:00:00,60,2850,24.5
+sample_zdm_structure,ZDM_002,Pulawska - Mokotow,Puławska,centrum,52.1879,21.0227,2026-05-20 08:00:00,60,2400,28.0
+sample_zdm_structure,ZDM_003,Marynarska - Sluzewiec,Marynarska,zachod,52.1806,20.9965,2026-05-20 08:00:00,60,1950,32.5
+sample_zdm_structure,ZDM_004,Dolina Sluzewiecka,Dolina Służewiecka,wschod,52.1743,21.0412,2026-05-20 08:00:00,60,2100,30.0
+sample_zdm_structure,ZDM_005,Ostrobramska,Ostrobramska,wschod,52.2316,21.1063,2026-05-20 08:00:00,60,2600,26.0
+sample_zdm_structure,ZDM_006,Jana III Sobieskiego,Jana III Sobieskiego,centrum,52.1782,21.0465,2026-05-20 08:00:00,60,1700,38.0
+sample_zdm_structure,ZDM_007,Postepu,Postępu,polnoc,52.1788,20.9982,2026-05-20 08:00:00,60,1250,41.0
+sample_zdm_structure,ZDM_008,Domaniewska,Domaniewska,zachod,52.1835,21.0025,2026-05-20 08:00:00,60,1450,36.5
