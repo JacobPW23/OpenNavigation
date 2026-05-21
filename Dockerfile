@@ -64,6 +64,9 @@ ENV PATH=$JAVA_HOME/bin:$PATH
 COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/requirements.txt
 
+# Install Playwright browsers and dependencies
+RUN playwright install --with-deps
+
 COPY server.properties /opt/kafka/config/server.properties
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
