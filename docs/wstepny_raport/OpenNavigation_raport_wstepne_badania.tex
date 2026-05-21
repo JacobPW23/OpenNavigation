@@ -83,15 +83,19 @@ uruchomić kontener na podstawie zbudowanego obrazu:
 
 Należy zwrócić uwagę, iż z powodu instalowania narzędzi Apache, zbudowanie obrazu Docker'a może chwilę zająć. 
 
-\subsection{Konfiguracja skryptu analizy}
+\subsection{Konfiguracja skryptów analizy}
 
 % do sprawdzenia poprawności
 Po udanym postawieniu kontenera, i sprawdzeniu jego działania za pomocą \verb|docker compose ps|, dane 
 zostaną pobrane automatycznie według potoku danych. 
 
-Skrypt wykonujący analizę najoptymalniejszej trasy na podstawie danych znajduje się pod następującą ścieżką:
+Skrypty wykonujący analizę najoptymalniejszej trasy na podstawie danych znajduje się pod następującymi ścieżkami:
+\begin{itemize}
+\item \verb|/app/src/analysis/route_initial_analysis.py|
+\item \verb|/app/src/analysis/osm_initial_analysis.py|
+\end{itemize}
 
-\verb|/app/src/analysis/route_initial_analysis.py|
+W tym raporcie opisane zostanie wykorzytanie pierwszego skryptu. Pozostałe zostaną opisane w ramach raportu końcowego.
 
 Kluczowym punktem dla analizy jest zdefiniowana w tym pliku stała \textbf{ROUTES}, w której określone są punkty 
 początkowe i końcowe, dla których ma zostać znaleziona optymalna trasa.
@@ -120,7 +124,16 @@ Aby uruchomić analizę tras, należy wykonać plik analizy tras po wprowadzeniu
 
 
 \subsection{Dane wyjściowe}
-Wyniki wykonania skryptu znajdą się w katalogu \verb|/app/data/results/route_initial_analysis/|. 
+Wyniki wykonania skryptu znajdą się w katalogu \verb|/app/data/results/route_initial_analysis/|. Dla analizy danych 
+istotne są 3 pliki wynikowe:
+\begin{enumerate}
+    \item summary.md - podsumowanie wyniku analizy skryptu;
+    \item routes\_comparison.csv - plik csv podsumowujący najważniejsze aspekty determinujące proponowane trasy:
+    distance\_km, base\_time\_min, adjusted\_time\_min, traffic\_impacted\_edges, 
+    speed\_impacted\_edges, zdm\_apr\_edges, zdm\_speed\_edges, osmnx\_only\_edges; 
+    \item route\_edges.csv - szczegóły krawędzi najbardziej optymalnej trasy znalezionej przez algorytm, takie jak 
+            traffic\_factor, speed\_factor, traffic\_speed\_factor, measured\_avg\_speed\_kmh, cost\_source.
+\end{enumerate}
 
 
 
