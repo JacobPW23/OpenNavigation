@@ -1,0 +1,3 @@
+Mokotowska -> Dobra: google: 19 min 6.5 km; shortest: 22 min 4.6 km; base: 26 min 4.9 km; sum: 26 4.9 km
+Dworzec Centralny -> Stadion Narodowy: google: 34 min 4.5 km; shortest: 34 min 4.5 km; base: 34 min 4.5 km; sum:  30 min 5.2 km
+Ochota -> Powiśle: google: 24 min 8.8 km; shortest 34 min 7.5 km; base 30 min 7.0 km; 29 min 7.0 km

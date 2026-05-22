@@ -4,14 +4,14 @@
 \usepackage[legalpaper, margin=2cm]{geometry}
 \usepackage{tcolorbox}
 \usepackage{float}
+\usepackage{graphicx}
 \usepackage{hyperref}
 
 \newif\ifpokazsekcjaszesc
 \pokazsekcjaszesctrue
 
 
-
-\title{\textbf{Raport ze wstępnych badań projektu zespołowego Big Data 
+\title{\textbf{Raport ze wstępnych badań projektu zespołowego Big Data
 \newline
 \newline
 Propozycja trasy na podstawie otwartych danych nawigacyjnych dla miasta stołecznego Warszawy}}
@@ -47,19 +47,287 @@ etc. Propozycja ta została wykorzystana do stworzenia wstępnego rozwiązania, 
 \section{Infrastruktura oraz potok przetwarzania danych}
 
 \subsection{Przedstawienie infrastruktury}
+Projekt został przygotowany jako środowisko kontenerowe - uruchamiany jest za pomocą \textbf{Docker Compose}. Pozwala to na odtworzenie środowiska na różnych urządzeniach, nie musząc instalować ręcznie zależności systemowych / bibliotek W kontenerze \textbf{opennavigation} znajdują się narzędzia potrzebne do pobierania, przetwarzania i analizy danych.\\
+
+\noindent Język \textbf{Python} został wybrany jako główny język implementacji. Jednakże \textbf{OSMnx} i \textbf{NetworkX} są wykorzystywane do pracy z grafem drogowym Warszawy.\\
+
+\noindent \textbf{Pandas} służy w projekcie do przetwarzania danych tabelarycznych, agregacji wyników, zapisu plików wynikowych.\\
+
+\noindent W ramach konteneru zainstalowane są także narzędzia \textbf{Apache Kafka} oraz \textbf{Apache Spark}. To pierwsze jest systemem wymiany danych, który umożliwia przesyłanie danych między różnymi etapami potoku przetwarzania. Apache Spark, natomiast, umożliwia przetwarzanie danych strumieniowych i transformację danych surowych w formę, która jest już gotowa do analizy.\\
+
+\noindent W projekcie nie wykorzystano Hadoopa, co jest zgodne z przyjętym zakresem projektu (był traktowany jako opcjonalne narzędzie). Zamiast tego dane są przetwarzane lokalnie, a wyniki są zapisywane w strukturze katalogów projektu.\\
+
+\noindent Struktura danych w projekcie podzielona jest na trzy katalogi:
+\begin{itemize}
+    \item \textbf{data/raw} - przechowuje dane surowe, m. in. raporty XLSX/PDF zaczerpnięte ze źródeł zewnętrznych
+    \item \textbf{data/processed} - przechowuje dane oczyszczone oraz zagregowane, które wykorzystywane są już prosto przez analizę tras
+    \item \textbf{data/results} - przechowuje wyniki analiz takie jak porównania tras
+\end{itemize}
+
+\noindent \\W obecnej wersji projektu, możliwe jest uruchomienie pełnej analizy trasy:
+\begin{enumerate}
+    \item Pobranie danych źródłowych (np. raporty XLSX/PDF z zewnętrznych źródeł)
+    \item Przetworzenie danych (czyszczenie, transformacja, agregacja)
+    \item Wyznaczenie trasy na podstawie przetworzonych danych
+    \item Porównanie różnych wariantów trasy według różnych funkcji kosztu
+\end{enumerate}
 
 \subsection{Potok danych}
-%subsubsections poniżej mogą być albo do potoku, albo do infrastruktury - jak będzie łatwiej opisać
+
+\noindent Potok danych został przygotowany w takim sposób, aby połączyć różne źródła danych w jeden spójny model kosztu przejazdu.\\
+
+\noindent Podstawą analizy jest graf drogowy Warszawy - stworzony na podstawie danych z \textbf{OpenStreetMap} z pomocą biblioteki \textbf{OSMnx}. Graf ten jest następnie wzbogacany o dane:
+\begin{itemize}
+    \item \textbf{ZDM} - dane dotyczące natężenia ruchu oraz średnich prędkości pojazdów (dane te są jedynie punktowe, więc są wykorzystywane do korekty kosztu przejazdu tylko dla tych krawędzi, dla których są dostępne)
+    \item \textbf{Dane pogodowe} - dane dotyczące warunków pogodowych, które mogą wpływać na czas przejazdu, np. deszcz czy mgła
+\end{itemize}
+
+\noindent \\\textbf{Potok} obejmuje następujące etapy:
+\begin{itemize}
+    \item Pobór danych
+    \item Czyszczenie i transformację danych
+    \item Agregację danych do postaci użytecznej w analizie tras
+    \item Zapis wyników pośrednich i końcowych
+\end{itemize}
+
+\noindent \\Szczegółowy opis poszczególnych etapów potoku przedstawiono w kolejnych podpunktach.
 
 \subsubsection{Źródła danych}
+Źródła danych obejmują zarówno statyczny opis sieci drogowej, jak i dane zmienne w czasie.
+W projekcie wykorzystano następujące źródła:
+\begin{itemize}
+    \item \textbf{OpenStreetMap / Overpass API} -- geometria sieci drogowej Warszawy oraz atrybuty
+    odcinków (np. \textit{highway}, \textit{maxspeed}, \textit{lanes}, \textit{oneway}). Te dane są
+    podstawą do budowy grafu tras i wyliczenia bazowych czasów przejazdu.
+    Przykład zapytania Overpass API używanego w projekcie (wybór dróg głównych dla Warszawy):
+\begin{tcolorbox}
+\begin{verbatim}
+[out:json][timeout:120];
+area["name"="Warszawa"]->.a;
+(
+    way["highway"~"^(primary|secondary|tertiary)$"](area.a);
+);
+(._;>;);
+out body;
+\end{verbatim}
+\end{tcolorbox}
+
+Przykładowy fragment odpowiedzi (rzeczywisty wynik, ograniczony do pojedynczego odcinka dla czytelności):
+\begin{tcolorbox}
+\begin{verbatim}
+{
+    "elements": [
+        {
+            "type": "way",
+            "id": 4307329,
+            "nodes": [
+                2448759046,
+                7093785352,
+                2452307268,
+                1439574696
+            ],
+            "tags": {
+                "cycleway:both": "no",
+                "highway": "tertiary",
+                "junction": "roundabout",
+                "lane_markings": "no",
+                "lit": "yes",
+                "maxspeed": "50",
+                "name": "Rondo Feliksa Stamma",
+                "name:etymology:wikidata": "Q5441838",
+                "sidewalk:left": "no",
+                "sidewalk:right": "separate",
+                "source:maxspeed": "PL:urban",
+                "surface": "asphalt",
+                "wikidata": "Q113528575"
+            }
+        }
+    ]
+}
+\end{verbatim}
+\end{tcolorbox}
+
+    \item \textbf{ZDM Warszawa (APR)} -- punktowe pomiary natężenia ruchu na wybranych odcinkach.
+    Dane są pobierane z panelu \textit{Analiza ruchu na drogach online}
+   {\sloppy (\url{https://zdm.waw.pl/dzialania/badania-i-analizy/analiza-ruchu-na-drogach/analiza-ruchu-na-drogach-online/})\fussy}
+    w postaci raportu XLSX.
+    Pobranie jest zautomatyzowane skryptem \verb|zdm_online_traffic_loader.py|,
+    który steruje interfejsem WWW (Playwright) i zapisuje raport do pliku.
+    
+    Tabela \ref{tab:zdm-apr-format} przedstawia uproszczony format rekordu APR, który trafia do potoku
+    po wczytaniu raportu XLSX.
+
+    \begin{table}[H]
+        \centering
+        \caption{Format danych ZDM APR (po wczytaniu do potoku)}
+        \label{tab:zdm-apr-format}
+        \begin{tabular}{|l|p{10cm}|}
+            \hline
+            \textbf{Pole} & \textbf{Opis} \\ \hline
+            source & Identyfikator źródła (np. \textit{zdm\_apr\_real}). \\ \hline
+            station\_id & Id punktu pomiarowego ZDM. \\ \hline
+            station\_name & Nazwa punktu pomiarowego (np. ulica/sekcja). \\ \hline
+            road\_name & Nazwa ulicy. \\ \hline
+            section & Opis odcinka (np. między skrzyżowaniami). \\ \hline
+            direction & Kierunek pomiaru. \\ \hline
+            lat, lon & Współrzędne geograficzne punktu. \\ \hline
+            measurement\_time & Czas pomiaru w formacie \textit{YYYY-MM-DD HH:00:00}. \\ \hline
+            period\_minutes & Okno czasowe pomiaru (zwykle 60). \\ \hline
+            vehicle\_count & Liczba pojazdów w danym oknie. \\ \hline
+            avg\_speed\_kmh & Brak w APR (pole puste). \\ \hline
+            \_metadata & Metadane techniczne: czas wczytania, plik źródłowy, arkusz. \\ \hline
+        \end{tabular}
+    \end{table}
+
+    \item \textbf{Raporty prędkości ZDM (PDF)} -- cykliczne raporty z uśrednionymi prędkościami,
+    publikowane na dashboardzie ZDM
+    (\url{https://zdm-warszawa.maps.arcgis.com/apps/dashboards/20bfffc9bae544b5a1cdfaad7be38c40}).
+    Pobranie plików jest zautomatyzowane skryptem \verb|zdm_speed_report_downloader.py|.
+    Następnie skrypt \verb|zdm_speed_pdf_parser.py| parsuje PDF-y do CSV
+    (\verb|zdm_speed_measurements.csv|).
+
+    Tabela \ref{tab:zdm-speed-format} pokazuje uproszczony format rekordu z raportów prędkości.
+
+    \begin{table}[H]
+        \centering
+        \caption{Format danych ZDM -- raporty prędkości (po parsowaniu PDF)}
+        \label{tab:zdm-speed-format}
+        \begin{tabular}{|l|p{10cm}|}
+            \hline
+            \textbf{Pole} & \textbf{Opis} \\ \hline
+            source & Identyfikator źródła (np. \textit{zdm\_speed\_pdf}). \\ \hline
+            source\_file & Nazwa pliku PDF, z którego pochodzi rekord. \\ \hline
+            station\_id & Id punktu pomiarowego ZDM. \\ \hline
+            station\_name & Nazwa punktu (np. ulica/sekcja). \\ \hline
+            road\_name & Nazwa ulicy. \\ \hline
+            direction & Kierunek pomiaru. \\ \hline
+            lat, lon & Współrzędne geograficzne punktu. \\ \hline
+            measurement\_date & Data raportu (YYYY-MM-DD). \\ \hline
+            measurement\_time & Znaczniki czasu (domyślnie 00:00:00). \\ \hline
+            period\_minutes & Okres uśrednienia (1440 minut). \\ \hline
+            day\_of\_week & Dzień tygodnia z raportu. \\ \hline
+            vehicle\_count & Liczba pojazdów (jeśli dostępna). \\ \hline
+            avg\_speed\_kmh & Średnia prędkość dla kierunku/dnia. \\ \hline
+            avg\_speed\_day\_kmh & Średnia prędkość w dzień. \\ \hline
+            avg\_speed\_night\_kmh & Średnia prędkość w nocy. \\ \hline
+            avg\_speed\_light\_kmh & Prędkość dla pojazdów lekkich. \\ \hline
+            avg\_speed\_heavy\_kmh & Prędkość dla pojazdów ciężkich. \\ \hline
+            vmax\_kmh, v85\_kmh & Prędkości Vmax i V85 (jeśli dostępne). \\ \hline
+            vdop\_raw & Dopuszczalna prędkość (surowy zapis z PDF). \\ \hline
+        \end{tabular}
+    \end{table}
+        \item \textbf{Open-Meteo} -- dane pogodowe godzinowe (opady, wiatr, widoczność, temperatura),
+        pobierane z API. Pobranie realizuje skrypt
+        \verb|weather_loader.py|, który zapisuje pełny JSON do Kafki
+        (temat \textit{warszawa-raw-weather}). Dane te stanowią kontekst do dodatkowej korekty kosztu.
+
+        Przykład zapytania API (parametry używane w projekcie):
+        \begin{tcolorbox}
+        \begin{verbatim}
+    https://api.open-meteo.com/v1/forecast?
+    latitude=52.2297&
+    longitude=21.0122&
+    hourly=temperature_2m,precipitation,rain,snowfall,wind_speed_10m,
+    visibility,weather_code&
+    forecast_days=1&
+    timezone=Europe/Warsaw
+        \end{verbatim}
+        \end{tcolorbox}
+
+        Przykładowy fragment odpowiedzi (rzeczywisty wynik, skrócony do kilku godzin):
+        \begin{tcolorbox}
+        \begin{verbatim}
+{
+    "latitude": 52.23009,
+    "longitude": 21.017075,
+    "timezone": "Europe/Warsaw",
+    "hourly": {
+        "time": [
+            "2026-05-22T00:00",
+            "2026-05-22T01:00",
+            "2026-05-22T02:00"
+        ],
+        "temperature_2m": [16.9, 15.9, 14.9],
+        "precipitation": [0.0, 0.0, 0.0],
+        "wind_speed_10m": [11.2, 8.6, 6.1],
+        "weather_code": [3, 0, 3]
+    }
+}
+        \end{verbatim}
+        \end{tcolorbox}
+\end{itemize}
 
 \subsubsection{Pobór danych - Kafka}
-% popraw jak się mylę
+Pobór danych realizowany jest przez skrypty loaderów, które zapisują dane wejściowe jako
+wiadomości JSON w tematach Apache Kafka. Poniżej zestawiono, co Kafka przyjmuje, do jakich
+tematów oraz gdzie dane są dalej przekazywane:
+\begin{itemize}
+    \item \textbf{warszawa-raw-streets} -- dane z Overpass API; producent
+    \path{overpass_raw_street_loader.py}; konsument Spark
+    \path{overpass_transformations.py}; zapis do
+    \path{/app/data/processed/osm_ways} oraz publikacja do tematu
+    \textit{warszawa-processed-edges}.
+    \item \textbf{warszawa-raw-traffic} -- dane APR z ZDM; producenci
+    \path{zdm_traffic_loader.py} lub \path{traffic_loader.py};
+    konsument \path{traffic_transformations.py}; zapis do
+    \path{/app/data/processed/traffic_measurements}, a następnie agregacja
+    \path{zdm_traffic_aggregation.py} do
+    \path{/app/data/processed/zdm_traffic_by_road.csv}.
+    \item \textbf{warszawa-raw-weather} -- dane Open-Meteo; producent
+    \path{weather_loader.py}; konsument
+    \path{weather_transformations.py}; zapis do
+    \path{/app/data/processed/weather_observations}.
+    \item \textbf{warszawa-processed-edges} -- ujednolicone krawędzie grafu po transformacji OSM;
+    temat wyjściowy z \path{overpass_transformations.py}, możliwy do dalszego
+    wykorzystania analitycznego.
+\end{itemize}
+
+W obecnej wersji zasilanie odbywa się wsadowo (mikro-batche), jednak potok działa w trybie
+streamingowym po stronie Apache Spark. Kafka pełni rolę bufora i kolejki zdarzeń,
+co zwiększa powtarzalność obliczeń i pozwala na odtwarzanie danych od wybranego offsetu.
 
 \subsubsection{Czyszczenie i transformacja danych - Apache Spark, OSMnx}
 
+\noindent Ten etap ma na celu przekształcenie danych w formie surowej do takiej postaci, która jest już bezpośrednio użyteczna w analizie tras.\\
+
+\noindent Dane \textbf{ZDM APR} są pobirane do Apache Kafka w surowej postaci, a następnie przetwarzane z pomocą Apache Spark. Spark odczytuje komunikaty z \textbf{warszawa-raw-traffic} i interpretuje je jako rekordy JSON. Ostatecznie przekształca je do postaci tabelarycznej - nazwy kolumn są ujednolicone, czas pomiaru jest konwertowany do formatu daty i czasu a liczba pojazdów jest przeliczana na natężenie ruchu (pojazdy/h). Wyznaczany jest właśnie na tym etapie współczynnik \textbf{traffic\_factor}, który jest używany jako \textbf{kara kosztu przejazdu} dla tych ulic, które mają dostępne pomiary natężenia ruchu.\\
+
+\noindent Dane \textbf{ZDM APR} są agregowane po ulicach. Z wielu rekordów godzinowych wybierany jest m. in. maksymalny/średni \textbf{traffic\_factor}, liczba pomiarów oraz zakres dat. Wynik tego to plik \textbf{zdm\_traffic\_by\_road.csv} - pozwala on na uruchomienie analizy tras bez ponownej potrzeby przetwarzania dużych danych wejściowych.\\
+
+\noindent W kwestii danych o prędkości pobieranych z raportów prędkości ZDM (w formie PDF), proces jest bardziej złożony. Dane są przetwarzane osobnym parserem. Pobierane są zawartości plików PDF, a później wydobywa się z nich kluczowe informacje takie jak:
+\begin{itemize}
+    \item Identyfikator punktu pomiarowego
+    \item Nazwa ulicy
+    \item Lokalizacja (współrzędne geo.)
+    \item Data pomiaru
+    \item Średnia prędkość \textbf{avg\_speed\_kmh}
+    
+\end{itemize}
+
+\noindent \\Zdarza się, że dla jednej konkretnej ulicy istnieje kilka pomiarów z różnych okresów czasu. Wtedy wylicza się wartość zagregowaną, która może być średnią arytmetyczną lub średnią ważoną liczbą pojazdów, jeśli ta informacja jest dostępna.Wynikiem tego etapu jest plik \textbf{zdm\_speed\_by\_road.csv}.
+
+\newpage
+
+\noindent Za pomocą biblioteki \textbf{OSMnx} powstaje struktura sieci drogowej Warszawy. Dla danego obszaru miasta pobiera się graf drogowy typu \textbf{drive}, który to odpowiada samochodowym pojazdom. Automatycznie wyznaczane są bazowe prędkości/czasu przejazdu dla krawędzi. W następnej kolejności krawędzie są wzbogacane o atrybuty:
+\begin{itemize}
+    \item \textbf{traffic\_factor} - korekta kosztu przejazdu na podstawie ZDM APR (o natężeniu ruchu)
+    \item \textbf{speed\_factor} - korekta na podstawie prędkości ruchu z raportów ZDM
+    \item \textbf{weather\_factor} - korekta na podstawie danych o pogodzie
+    \item \textbf{traffic\_speed\_factor} - finalna korekta wynikająca z danych ruchu i prędkości - jest ona wyznaczana jako większa z wartości \textbf{traffic\_factor} i \textbf{speed\_factor}
+    \item \textbf{cost\_time\_s} - końcowa waga krawędzi w grafie (czas w sekundach), uwzględniająca bazowy czas przejazdu i dostępne korekty
+\end{itemize}
+
+\noindent \\Na etapie transformacji normalizowane są też nazwy ulic, bowiem ZDM oraz OpenStreetMap mogą mieć różne formy zapisu nazw konkretnych ulic, np. Al. i Aleje. Potok stosuje uproszczone ujednolicanie nazw i usuwanie wybranych skrótów. Jest to istotne, ponieważ dane ZDM są głównie dopasowywane do krawędzi po nazwach ulic, co na późniejszym etapie zostanie zastąpione dopasowniem przestrzennym.\\
+
 
 \subsubsection{Zapis danych}
+
+\noindent Kiedy dane są już oczyszczone, przekształcone i wzbogacone o dodatkowe atrybuty, są następnie zapisywane do odpowiednich katalogów w projekcie. W tej kwestii zastosowano następujący podział:
+\begin{itemize}
+    \item Dane surowe (np. raporty XLSX/PDF) są zapisywane w katalogu \textbf{data/raw}
+    \item Dane przetworzone, takie jak pomiary natężenia ruchu czy dane pogodowe, są zapisywane w katalogu \textbf{data/processed}. Format zapisu dla danych tabelarycznych to Parquet.
+    \item Wyniki analiz są zapisywane w katalogu \textbf{data/results}. 
+\end{itemize}
 
 
 \section{Instalacja, konfiguracja oraz wykonanie projektu}
@@ -81,13 +349,77 @@ uruchomić kontener na podstawie zbudowanego obrazu:
 \end{verbatim}
 \end{tcolorbox}
 
-Należy zwrócić uwagę, iż z powodu instalowania narzędzi Apache, zbudowanie obrazu Docker'a może chwilę zająć. 
+Należy zwrócić uwagę, iż z powodu instalowania narzędzi Apache, zbudowanie obrazu Docker'a może chwilę zająć.
+
+\subsection{Pobór danych (ingestion)}
+Pobieranie danych jest zautomatyzowane za pomocą skryptów Pythona, które można uruchomić w kontenerze Docker.
+Poniżej przedstawiono komendy do pobrania danych z poszczególnych źródeł:
+
+\par\medskip
+\textbf{Dane APR ZDM}
+\begin{tcolorbox}
+\begin{verbatim}
+> docker compose exec opennavigation python \
+    src/ingestion/zdm_online_traffic_loader.py
+> docker compose exec opennavigation python \
+    src/ingestion/zdm_traffic_loader.py
+> docker compose exec opennavigation spark-submit \
+    --packages \
+    org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
+    src/processing/traffic_transformations.py
+> docker compose exec opennavigation python \
+    src/analysis/zdm_traffic_aggregation.py
+\end{verbatim}
+\end{tcolorbox}
+Wyniki: \path{data/processed/zdm_traffic_by_road.csv}.
+
+\par\medskip
+\textbf{Raporty prędkości ZDM (PDF)}
+\begin{tcolorbox}
+\begin{verbatim}
+> docker compose exec opennavigation python \
+    src/ingestion/zdm_speed_report_downloader.py
+> docker compose exec opennavigation python \
+    src/ingestion/zdm_speed_pdf_parser.py
+> docker compose exec opennavigation python \
+    src/analysis/zdm_speed_aggregation.py
+\end{verbatim}
+\end{tcolorbox}
+Wyniki: \path{data/processed/zdm_speed_by_road.csv}.
+
+\par\medskip
+\textbf{OSM / Overpass}
+\begin{tcolorbox}
+\begin{verbatim}
+> docker compose exec opennavigation python \
+    src/ingestion/overpass_raw_street_loader.py
+> docker compose exec opennavigation spark-submit \
+    --packages \
+    org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
+    src/processing/overpass_transformations.py
+\end{verbatim}
+\end{tcolorbox}
+Wyniki: temat \textit{warszawa-processed-edges}.
+
+\par\medskip
+\textbf{Pogoda (Open-Meteo)}
+\begin{tcolorbox}
+\begin{verbatim}
+> docker compose exec opennavigation python \
+    src/ingestion/weather_loader.py
+> docker compose exec opennavigation spark-submit \
+    --packages \
+    org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
+    src/processing/weather_transformations.py
+\end{verbatim}
+\end{tcolorbox}
+Wyniki: \textit{warszawa-raw-weather}.
 
 \subsection{Konfiguracja skryptów analizy}
 
 % do sprawdzenia poprawności
 Po udanym postawieniu kontenera, i sprawdzeniu jego działania za pomocą \verb|docker compose ps|, dane 
-zostaną pobrane automatycznie według potoku danych. 
+mogą zostać pobrane według potoku danych.
 
 Skrypty wykonujący analizę najoptymalniejszej trasy na podstawie danych znajduje się pod następującymi ścieżkami:
 \begin{itemize}
@@ -129,7 +461,7 @@ istotne są 3 pliki wynikowe:
 \begin{enumerate}
     \item summary.md - podsumowanie wyniku analizy skryptu;
     \item routes\_comparison.csv - plik csv podsumowujący najważniejsze aspekty determinujące proponowane trasy:
-    distance\_km, base\_time\_min, adjusted\_time\_min, traffic\_impacted\_edges, 
+    distance\_km, base\_time\_min, adjusted\_time\_min, traffic\_impacted\_edges, \\
     speed\_impacted\_edges, zdm\_apr\_edges, zdm\_speed\_edges, osmnx\_only\_edges; 
     \item route\_edges.csv - szczegóły krawędzi najbardziej optymalnej trasy znalezionej przez algorytm, takie jak 
             traffic\_factor, speed\_factor, traffic\_speed\_factor, measured\_avg\_speed\_kmh, cost\_source.
@@ -139,13 +471,128 @@ istotne są 3 pliki wynikowe:
 
 \section{Wstępna analiza problemu}
 
+\subsection{Cel i metodyka}
+Celem rozdziału jest weryfikacja, czy algorytm znajduje sensowną trasę oraz czy czas przejazdu
+w minutach jest liczony spójnie. Dodatkowo wyniki porównano z czasami i dystansami z Google Maps
+dla aktualnego obciążenia ruchu (19:00--19:30), aby ocenić zgodność kierunkową.
+Analiza opiera się na wynikach generowanych przez \verb|route_initial_analysis.py| i zapisanych w
+\path{data/results/route_initial_analysis}.
+
+Przyjęta metodyka:
+\begin{enumerate}
+    \item Wybrano trzy pary punktów start--cel (\textit{ROUTES}).
+    \item Dla każdej pary wyznaczono trzy warianty: najkrótszy dystansowo, najszybszy bazowo
+    (na podstawie \textit{travel\_time} z OSMnx) oraz wariant skorygowany
+    (\textit{cost\_time\_s} z uwzględnieniem danych ZDM i pogody).
+    \item Dla każdej trasy zsumowano długość oraz czasy przejazdu, uzyskując
+    \textit{distance\_km}, \textit{base\_time\_min} i \textit{adjusted\_time\_min}.
+    \item Wygenerowane trasy przepisano do Google Maps i odczytano czas oraz dystans
+    dla okna 19:00--19:30.
+\end{enumerate}
+
+\subsection{Wyniki wstępne}
+Najpierw zestawiono wyniki generowane przez program (na podstawie \textit{summary.md})
+w tabeli \ref{tab:route-compare-summary}.
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption{Wyniki programu dla trzech tras}
+    \label{tab:route-compare-summary}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{|p{4.6cm}|p{3.2cm}|r|r|r|}
+        \hline
+        \textbf{Trasa} & \textbf{Wariant} & \textbf{Dystans [km]} & \textbf{Czas bazowy [min]} & \textbf{Czas skoryg. [min]} \\ \hline
+        Mokotowska $\rightarrow$ Dobra & najkrótsza dystansowo & 4.73 & 5.99 & 7.09 \\ \hline
+        Mokotowska $\rightarrow$ Dobra & najszybsza bazowo & 4.78 & 5.80 & 6.56 \\ \hline
+        Mokotowska $\rightarrow$ Dobra & skorygowana ruchem i pogodą & 4.78 & 5.80 & 6.56 \\ \hline
+        Dworzec Centralny $\rightarrow$ Stadion Narodowy & najkrótsza dystansowo & 4.32 & 5.20 & 6.90 \\ \hline
+        Dworzec Centralny $\rightarrow$ Stadion Narodowy & najszybsza bazowo & 4.32 & 5.20 & 6.90 \\ \hline
+        Dworzec Centralny $\rightarrow$ Stadion Narodowy & skorygowana ruchem i pogodą & 4.97 & 6.35 & 6.69 \\ \hline
+        Ochota $\rightarrow$ Powiśle & najkrótsza dystansowo & 6.78 & 8.32 & 11.14 \\ \hline
+        Ochota $\rightarrow$ Powiśle & najszybsza bazowo & 6.79 & 8.20 & 10.94 \\ \hline
+        Ochota $\rightarrow$ Powiśle & skorygowana ruchem i pogodą & 7.14 & 8.84 & 9.48 \\ \hline
+    \end{tabular}
+    }
+\end{table}
+
+\begin{itemize}
+    \item Wszystkie przedstawione algorytmy znalazły poprawne trasy, na podstawie ich miar. \textit{Najkrótszy dystansowo} ma najkrótszy dystans, \textit{najszybszy bazowo} ma najkrótszy czas bazowy, a \textit{skorygowany} najkrótszy czas skorygowany.
+\end{itemize}
+
+Wyniki porównawcze przygotowano na podstawie ręcznego przepisania wygenerowanych tras do
+Google Maps i odczytu czasu oraz dystansu dla aktualnego ruchu w godzinach 19:00--19:30.
+W tabeli podano wartości w formacie \textit{min / km}.
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption{Porównanie czasu i dystansu z Google Maps (19:00--19:30)}
+    \label{tab:route-compare-google}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{|p{4.6cm}|p{2.6cm}|p{2.6cm}|p{2.6cm}|p{2.6cm}|}
+        \hline
+        \textbf{Trasa} & \textbf{Google [min/km]} & \textbf{Najkrótsza [min/km]} & \textbf{Bazowa [min/km]} & \textbf{Skorygowana [min/km]} \\ \hline
+        Mokotowska $\rightarrow$ Dobra & 19 / 6.5 & 22 / 4.6 & 26 / 4.9 & 26 / 4.9 \\ \hline
+        Dworzec Centralny $\rightarrow$ Stadion Narodowy & 34 / 4.5 & 34 / 4.5 & 34 / 4.5 & 30 / 5.2 \\ \hline
+        Ochota $\rightarrow$ Powiśle & 24 / 8.8 & 34 / 7.5 & 30 / 7.0 & 29 / 7.0 \\ \hline
+    \end{tabular}
+    }
+\end{table}
+
+\begin{itemize}
+    \item Dla trasy Mokotowska--Dobra czasy z programu są wyższe niż w Google Maps,
+    mimo krótszego dystansu. Jest to spowodowane korkami nie przewidzianymi przez dane o zagęszczeniu trasy.
+    Wariant bazowy i skorygowany nie polepszyły czasu względem najkrótszej trasy, co sugeruje, źle dobrane współczynniki bądź niestandardowym ruchem w tej części miasta.
+    \item Dla trasy Dworzec Centralny--Stadion Narodowy wariant najkrótszy i bazowy dały pokrywają się z czasem z Google Maps. Wariant skorygowany poprawił czas, co sugeruje, że korekta na podstawie danych ZDM i pogody była trafna
+    i poprawiła wynik względem automatycznej trasy Google Maps.
+    \item Dla trasy Ochota--Powiśle algorytm źle wyznaczył trasę, co skutkowało większym dystansem dla najkrótszej trasy niż w wariancie bazowym oraz skorygowanym.
+    Ten błąd jest spowodowany zapisem grafowym OSM, gdzie nie ma oznaczonych zakazów skrętu oraz zamkniętych ulic, które uwzględnia Google Maps.
+    Wariant skorygowany minimalnie poprawił wynik względem bazowego. 
+\end{itemize}
+
 \subsection{Wnioski}
+Na podstawie porównań można stwierdzić, że algorytm konsekwentnie wyznacza trzy warianty tras
+i poprawnie różnicuje je według przyjętych miar (dystans, czas bazowy, czas skorygowany).
+Korekta kosztu na podstawie danych ZDM i pogody potrafi zmienić wybór trasy i obniżyć czas
+przejazdu względem wariantu bazowego, co potwierdza sens podejścia. Różnice względem Google Maps
+wskazują na potrzebę dostosownia współczynników oraz uzupełnienia ograniczeń w grafie OSM
+(np. zakazy skrętu, zamknięcia). \\
+Algorytm skorygowany radzi sobie lepiej niż bazowy oraz najkrótrzy, jednak nadal nie obsługuje 
+ruchu w czasie rzeczywistym, co oznacza że nie powinien być używany do omijania zagęszczeń w
+czasie rzeczywistym, a raczej do planowania trasy z uwzględnieniem danych historycznych i kontekstowych.
 
 \section{Dalsze kierunki badania}
+W kolejnych etapach powinniśmy skupić się na poprawieniu znajdowania najszybszej trasy oraz
+poprawie szaczowania czasu przejazdu. W tym celu należy rozważyć następujące kierunki:
+\begin{itemize}
+    \item \textbf{Kalibracja współczynników} -- zmiana \textit{traffic\_factor} oraz
+    \textit{speed\_factor} aby poprawić trafność wyznaczanych tras.
+    \item \textbf{Ograniczenia drogowe} -- uzupełnienie grafu OSM o zakazy skrętu,
+    zamknięcia i ograniczenia kierunkowe, aby ograniczyć rozbieżności z rzeczywistymi trasami.
+    \item \textbf{Dane czasu rzeczywistego} -- dodanie często aktualizowanych źródeł
+    (np. zdarzenia drogowe, zagęszczenia ruchu).
+    \item \textbf{Walidacja zewnętrzna} -- porównanie wyników z rzeczywistymi czasami przejazdu z łatwo dostępnych źródeł (Google Maps nie daje możliwości łatwego zautomatyzowania tworzenia własnych tras)
+\end{itemize}
 
 
 \section{Podsumowanie}
 
+W raporcie przedstawiono zbudowaną infrastrukturę projektu oraz zarys potoku przetwarzania danych,
+który obejmuje pobór danych, buforowanie w Kafka, przetwarzanie w Spark i zapis wyników do
+struktury katalogów projektu. Opisano kluczowe źródła danych wraz z formatami i przykładowymi 
+wynikami zapytań, co stanowi podstawę do budowy grafu dróg i korekty kosztów przejazdu.
+
+W części analitycznej występuje wstępne porównania wariantów tras dla kilku par punktów,
+zestawiając wyniki programu z danymi z Google Maps. Analiza pokazuje, że algorytmy poprawnie
+generują warianty tras pod kątem dystansu i czasu, a korekty na podstawie danych ZDM i pogody
+potrafią poprawić wynik, choć wciąż występują rozbieżności wynikające z ograniczeń danych
+oraz uproszczeń w grafie OSM.
+
+Zidentyfikowane ograniczenia wskazują na potrzebę dalszej kalibracji współczynników i
+uzupełnienia ograniczeń drogowych oraz rozbudowy źródeł danych. Zaproponowane kierunki badań
+koncentrują się na poprawie trafności wyznaczania tras i zbliżeniu wyników do rzeczywistych
+czasów przejazdu.
 
 
 
