@@ -1,0 +1,152 @@
+\documentclass[12pt]{article}
+\usepackage[OT4]{fontenc}
+\usepackage[polish]{babel}
+\usepackage[legalpaper, margin=2cm]{geometry}
+\usepackage{tcolorbox}
+\usepackage{float}
+\usepackage{hyperref}
+
+\newif\ifpokazsekcjaszesc
+\pokazsekcjaszesctrue
+
+
+
+\title{\textbf{Raport ze wstępnych badań projektu zespołowego Big Data 
+\newline
+\newline
+Propozycja trasy na podstawie otwartych danych nawigacyjnych dla miasta stołecznego Warszawy}}
+\author{Zespół 12: \\ Michał Zalewski \\ Jakub Próchnicki \\ Jan Machowski \\ Maciej Kurzydłowski \\ Jan Domański}
+\date{Warszawa, 21 maja 2026}
+
+\begin{document}
+\maketitle
+\newpage
+\tableofcontents
+\newpage
+
+
+
+
+\section{Wstęp}
+
+Niniejszy raport jest kontynuacją prac dążących do opracowania modelu propozycji trasy na podstawie otwartych danych 
+nawigacyjnych. Główny cel tego dokumentu to przedstawienie stworzonej w ramach projektu infrastruktury oraz potoku 
+przetwarzania danych. Opisana zostanie również wstępna analiza wyżej wymienionego problemu oraz wnioski 
+wynikające z tej analizy.
+
+W poprzednim dokumencie zawarty został przegląd tematyki, wstępna propozycja źródeł oraz narzędzi 
+wykorzystanych do wykonania projektu, oraz problemów i ograniczeń związanych z wybranymi danymi.
+
+Dla przypomnienia - zaproponowana została reprezentacja miasta w postaci grafu skierowanego, 
+gdzie wierzchołki są przecięciami lub zakończeniami dróg a krawędzie
+są faktycznymi odcinkami dróg, z odpowiednim zestawem atrybutów - długość, typ drogi, liczba pasów, natężenie ruchu
+etc. Propozycja ta została wykorzystana do stworzenia wstępnego rozwiązania, które zostanie przedstawione poniżej.
+
+
+
+\section{Infrastruktura oraz potok przetwarzania danych}
+
+\subsection{Przedstawienie infrastruktury}
+
+\subsection{Potok danych}
+%subsubsections poniżej mogą być albo do potoku, albo do infrastruktury - jak będzie łatwiej opisać
+
+\subsubsection{Źródła danych}
+
+\subsubsection{Pobór danych - Kafka}
+% popraw jak się mylę
+
+\subsubsection{Czyszczenie i transformacja danych - Apache Spark, OSMnx}
+
+
+\subsubsection{Zapis danych}
+
+
+\section{Instalacja, konfiguracja oraz wykonanie projektu}
+
+\subsection{Instalacja i zbudowanie projektu}
+
+Aktualną wersję rozwiązania można znaleźć w otwartym repozytorium na GitHub, pod linkem \url{https://github.com/JacobPW23/OpenNavigation}.
+
+Aby zapewnić uniwersalność rozwiązania i prostotę obsługi i udostępniania postanowiono skonteneryzować projekt 
+za pomocą technologi Docker. W celu wykorzystania OpenNavigation należy sklonować repozytorium, zbudować obraz oraz 
+uruchomić kontener na podstawie zbudowanego obrazu:
+
+\begin{tcolorbox}
+\begin{verbatim}
+> git clone https://github.com/JacobPW23/OpenNavigation
+> cd OpenNavigation
+> docker compose build
+> docker compose up -d
+\end{verbatim}
+\end{tcolorbox}
+
+Należy zwrócić uwagę, iż z powodu instalowania narzędzi Apache, zbudowanie obrazu Docker'a może chwilę zająć. 
+
+\subsection{Konfiguracja skryptów analizy}
+
+% do sprawdzenia poprawności
+Po udanym postawieniu kontenera, i sprawdzeniu jego działania za pomocą \verb|docker compose ps|, dane 
+zostaną pobrane automatycznie według potoku danych. 
+
+Skrypty wykonujący analizę najoptymalniejszej trasy na podstawie danych znajduje się pod następującymi ścieżkami:
+\begin{itemize}
+\item \verb|/app/src/analysis/route_initial_analysis.py|
+\item \verb|/app/src/analysis/osm_initial_analysis.py|
+\end{itemize}
+
+W tym raporcie opisane zostanie wykorzytanie pierwszego skryptu. Pozostałe zostaną opisane w ramach raportu końcowego.
+
+Kluczowym punktem dla analizy jest zdefiniowana w tym pliku stała \textbf{ROUTES}, w której określone są punkty 
+początkowe i końcowe, dla których ma zostać znaleziona optymalna trasa.
+Poniżej zamieszczono przykładową konfigurację zmiennej, domyślnie znajdującą się w skrypcie w języku Python:
+
+\begin{tcolorbox}
+    \begin{verbatim}
+ROUTES = [
+    {
+        "route_name": "Mokotowska -> Dobra",
+        "origin": (52.218662, 21.017080),
+        "destination": (52.244974, 21.020670),
+    },
+]
+    \end{verbatim}
+\end{tcolorbox} 
+gdzie współrzędzne \textit{origin} oraz \textit{destination} są podawane jako \textit{(latitude, longitude)}.
+
+Aby uruchomić analizę tras, należy wykonać plik analizy tras po wprowadzeniu swojej konfigurazji. Komenda:
+\begin{tcolorbox}
+    \begin{verbatim}
+> docker compose exec opennavigation python \
+    src/analysis/route_initial_analysis.py
+    \end{verbatim}
+\end{tcolorbox} 
+
+
+\subsection{Dane wyjściowe}
+Wyniki wykonania skryptu znajdą się w katalogu \verb|/app/data/results/route_initial_analysis/|. Dla analizy danych 
+istotne są 3 pliki wynikowe:
+\begin{enumerate}
+    \item summary.md - podsumowanie wyniku analizy skryptu;
+    \item routes\_comparison.csv - plik csv podsumowujący najważniejsze aspekty determinujące proponowane trasy:
+    distance\_km, base\_time\_min, adjusted\_time\_min, traffic\_impacted\_edges, 
+    speed\_impacted\_edges, zdm\_apr\_edges, zdm\_speed\_edges, osmnx\_only\_edges; 
+    \item route\_edges.csv - szczegóły krawędzi najbardziej optymalnej trasy znalezionej przez algorytm, takie jak 
+            traffic\_factor, speed\_factor, traffic\_speed\_factor, measured\_avg\_speed\_kmh, cost\_source.
+\end{enumerate}
+
+
+
+\section{Wstępna analiza problemu}
+
+\subsection{Wnioski}
+
+\section{Dalsze kierunki badania}
+
+
+\section{Podsumowanie}
+
+
+
+
+\end{document}
