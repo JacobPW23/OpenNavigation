@@ -46,21 +46,79 @@ etc. Propozycja ta została wykorzystana do stworzenia wstępnego rozwiązania, 
 
 \section{Infrastruktura oraz potok przetwarzania danych}
 
+
 \subsection{Przedstawienie infrastruktury}
 
+Projekt został przygotowany jako środowisko kontenerowe - uruchamiany jest za pomocą \textbf{Docker Compose}. Pozwala to na odtworzenie środowiska na różnych urządzeniach, nie musząc instalować ręcznie zależności systemowych / bibliotek W kontenerze \textbf{opennavigation} znajdują się narzędzia potrzebne do pobierania, przetwarzania i analizy danych.\\
+
+\noindent Język \textbf{Python} został wybrany jako główny język implementacji. Jednakże \textbf{OSMnx} i \textbf{NetworkX} są wykorzystywane do pracy z grafem drogowym Warszawy.\\
+
+\noindent \textbf{Pandas} służy w projekcie do przetwarzania danych tabelarycznych, agregacji wyników, zapisu plików wynikowych.\\
+
+\noindent W ramach konteneru zainstalowane są także narzędzia \textbf{Apache Kafka} oraz \textbf{Apache Spark}. To pierwsze jest systemem wymiany danych, który umożliwia przesyłanie danych między różnymi etapami potoku przetwarzania. Apache Spark, natomiast, umożliwia przetwarzanie danych strumieniowych i transformację danych surowych w formę, która jest już gotowa do analizy.\\
+
+\noindent W projekcie nie wykorzystano Hadoopa, co jest zgodne z przyjętym zakresem projektu (był traktowany jako opcjonalne narzędzie). Zamiast tego dane są przetwarzane lokalnie, a wyniki są zapisywane w strukturze katalogów projektu.\\
+
+\noindent Struktura danych w projekcie podzielona jest na trzy katalogi:
+\begin{itemize}
+    \item \textbf{data/raw} - przechowuje dane surowe, m. in. raporty XLSX/PDF zaczerpnięte ze źródeł zewnętrznych
+    \item \textbf{data/processed} - przechowuje dane oczyszczone oraz zagregowane, które wykorzystywane są już prosto przez analizę tras
+    \item \textbf{data/results} - przechowuje wyniki analiz takie jak porównania tras
+\end{itemize}
+
+\noindent \\W obecnej wersji projektu, możliwe jest uruchomienie pełnej analizy trasy:
+\begin{enumerate}
+    \item Pobranie danych źródłowych (np. raporty XLSX/PDF z zewnętrznych źródeł)
+    \item Przetworzenie danych (czyszczenie, transformacja, agregacja)
+    \item Wyznaczenie trasy na podstawie przetworzonych danych
+    \item Porównanie różnych wariantów trasy według różnych funkcji kosztu
+\end{enumerate}
+\newpage
+
+
+
 \subsection{Potok danych}
-%subsubsections poniżej mogą być albo do potoku, albo do infrastruktury - jak będzie łatwiej opisać
+
+\noindent Potok danych został przygotowany w takim sposób, aby połączyć różne źródła danych w jeden spójny model kosztu przejazdu.\\
+
+\noindent Podstawą analizy jest graf drogowy Warszawy - stworzony na podstawie danych z \textbf{OpenStreetMap} z pomocą biblioteki \textbf{OSMnx}. Graf ten jest następnie wzbogacany o dane:
+\begin{itemize}
+    \item \textbf{ZDM} - dane dotyczące natężenia ruchu oraz średnich prędkości pojazdów (dane te są jedynie punktowe, więc są wykorzystywane do korekty kosztu przejazdu tylko dla tych krawędzi, dla których są dostępne)
+    \item \textbf{Dane pogodowe} - dane dotyczące warunków pogodowych, które mogą wpływać na czas przejazdu, np. deszcz czy mgła
+\end{itemize}
+
+\noindent \\\textbf{Potok} obejmuje następujące etapy:
+\begin{itemize}
+    \item Pobór danych
+    \item Czyszczenie i transformację danych
+    \item Agregację danych do postaci użytecznej w analizie tras
+    \item Zapis wyników pośrednich i końcowych
+\end{itemize}
+
+\noindent \\Szczegółowy opis poszczególnych etapów potoku przedstawiono w kolejnych podpunktach.
 
 \subsubsection{Źródła danych}
 
-\subsubsection{Pobór danych - Kafka}
+\noindent Podstawowym źródłem danych jest \textbf{OpenStreetMap}, który dostarcza szczegółową mapę sieci drogowej Warszawy. Dane pogodowe oraz te z \textbf{ZDM} służą do modyfikacji kosztu przejazdu przez konkrente odcinki grafu.\\
+
+\noindent \textbf{OpenStreetMap} - dane z OSM są pobierane z pomocą biblioteki OSMnx i na ich podstawie tworzony jest graf drogowy Warszawy dla ruchu samochodowego. Węzły grafu to punkty sieci drogowej, np. skrzyżowania. Krawędzie to odcinki dróg. Jak już wspomniano wcześniej, jest to główne źródło danych.\\
+
+\noindent Następnym źródłem danych to dane \textbf{ZDM Warszawa ARP} - dane z Systemu Automatycznych Pomiarów Ruchu. Dane te podają informacje o natężeniu ruchu w wybranych punktach warszawskiej sieci drogowej - z dokładnością do godziny oraz podziałem na kierunki ruchu. W projekcie wykorzystywane są do wyznaczania współczynnika \textbf{traffic\_factor}. Współczynnik ten zwiększa koszt przejazdu przez daną ulicę, jeśli ma zwiększone natężenie ruchu. Jest to zdecydowanie najlepsze i najważniejsze źródło informacji jeżeli chodzi o rzeczywisty ruch w Warszawie. Koniec końców należy jednak pamiętać, że pomiary te mają \textbf{charakter punktowy} i nie dotyczą każdej warszawskiej ulicy.\\
+
+\noindent Trzecim źródłem są dane o prędkości pojazdów pochodzące z ZDM. Są to średnie wartości prędkości dla konkretnych punktów pomiarowych. Dane te są wykorzystywane do wyznaczania współczynnika \textbf{speed\_factor}. Współczynnik ten, analogicznie do \textbf{traffic\_factor}, wpływa na koszt przejazdu przez daną ulicę, jeśli średnia prędkość jest niższa niż ta bazowa z OSMnx. Jest to jednak bardziej warstwa pomocnicza - duża część ulic nie ma danych o prędkościach.\\
+
+\noindent Kolejne źródło danych to dane pogodowe pobierane z \textbf{Open-Meteo}. Dane te są wykorzystywane do wyznaczania współczynnika \textbf{weather\_factor}, który może wpływać na koszt przejazdu przez daną ulicę, jeżeli warunki pogodowe nie są korzystne, czyli jeżeli np. pada wtedy deszcz. Jeżeli dane nie są dostępne, dla współczynnika przyjmowana jest wartość domyślna czyli 1.0\\
+
+\subsubsection{Pobór danych - Kafka i skrypty ingestujące}
 % popraw jak się mylę
 
-\subsubsection{Czyszczenie i transformacja danych - Apache Spark, OSMnx}
+\subsubsection{Czyszczenie i transformacja danych - Apache Spark, OSMnx, Pandas}
 
 
 \subsubsection{Zapis danych}
 
+
+\subsubsection{Wykorzystanie danych w analizie tras}
 
 \section{Instalacja, konfiguracja oraz wykonanie projektu}
 
