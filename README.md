@@ -241,7 +241,12 @@ Czasy przejazdu należy traktować jako **koszt porównawczy tras**, a nie dokł
 
 Surowe raporty PDF z pomiarami prędkości ZDM nie są wersjonowane ze względu na rozmiar.
 
-Aby odtworzyć dane prędkości od zera, należy pobrać punktowe raporty PDF z mapy ZDM dotyczącej badań prędkości i umieścić je w katalogu:
+Aby odtworzyć dane prędkości od zera, należy uruchomić skrypt do pobierania raportów PDF z mapy ZDM dotyczącej badań prędkości:
+
+```bash
+docker compose exec opennavigation python src/ingestion/zdm_speed_raport_downloader.py
+```
+Pobrane raporty PDF będą znajdować się w katalogu:
 
 ```text
 data/raw/traffic/speed_reports/
@@ -273,7 +278,12 @@ data/processed/zdm_speed_by_road.csv
 
 ## Odtworzenie danych APR ZDM od zera
 
-Dane APR ZDM należy pobrać jako raport XLSX ze strony ZDM i umieścić lokalnie w katalogu:
+Aby pobrać dane APR ZDM jako raport XLSX ze strony ZDM należy wykonać skrypt:
+
+```bash
+docker compose exec opennavigation python src/ingestion/zdm_online_traffic_loader.py
+```
+Skrypt pobierze raport do katalogu:
 
 ```text
 data/raw/traffic/
