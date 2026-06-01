@@ -136,12 +136,13 @@ def load_traffic_factors() -> dict[str, float]:
     if TRAFFIC_AGG_PATH.exists():
         df = pd.read_csv(TRAFFIC_AGG_PATH)
 
-        if not df.empty and {"road_key", "traffic_factor_max"}.issubset(df.columns):
+        if not df.empty and "road_key" in df.columns:
             df["road_key_norm"] = df["road_key"].apply(normalize_text)
+            traffic_col = "traffic_factor_latest" if "traffic_factor_latest" in df.columns else "traffic_factor_max"
 
             traffic_map = (
-                df.dropna(subset=["road_key_norm", "traffic_factor_max"])
-                .set_index("road_key_norm")["traffic_factor_max"]
+                df.dropna(subset=["road_key_norm", traffic_col])
+                .set_index("road_key_norm")[traffic_col]
                 .to_dict()
             )
 
@@ -164,11 +165,14 @@ def load_traffic_factors() -> dict[str, float]:
 
     df = df.drop_duplicates(subset=["station_id", "measurement_time", "road_name", "direction"])
     df["road_key"] = df["road_name"].apply(normalize_text)
+    df["measurement_time"] = pd.to_datetime(df["measurement_time"], errors="coerce")
 
     traffic_map = (
-        df.dropna(subset=["road_key", "traffic_factor"])
-        .groupby("road_key")["traffic_factor"]
-        .max()
+        df.dropna(subset=["road_key", "traffic_factor", "measurement_time"])
+        .sort_values("measurement_time")
+        .groupby("road_key")
+        .tail(1)
+        .set_index("road_key")["traffic_factor"]
         .to_dict()
     )
 

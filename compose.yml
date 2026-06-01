@@ -12,3 +12,9 @@ services:
       - ./docs:/app/docs
     environment:
       PYTHONUNBUFFERED: "1"
+      TOMTOM_API_KEY: "${TOMTOM_API_KEY:-}"
+      TOMTOM_FLOW_URL: "${TOMTOM_FLOW_URL:-https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json}"
+      TOMTOM_POLL_INTERVAL_SECONDS: "${TOMTOM_POLL_INTERVAL_SECONDS:-300}"
+      TOMTOM_RUN_ONCE: "${TOMTOM_RUN_ONCE:-0}"
+      TOMTOM_MAPPING_PATH: "${TOMTOM_MAPPING_PATH:-/app/data/processed/tomtom_edge_mapping.parquet}"
+      TOMTOM_MAX_CELLS_PER_POLL: "${TOMTOM_MAX_CELLS_PER_POLL:-50}"
