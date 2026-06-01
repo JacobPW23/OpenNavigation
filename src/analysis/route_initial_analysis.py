@@ -31,6 +31,36 @@ ROUTES = [
         "origin": (52.2109, 20.9714),
         "destination": (52.2449, 21.0207),
     },
+    {
+        "route_name": "Metro Wilanowska -> Racławicka",
+        "origin": (52.182166, 21.020809),
+        "destination": (51.198318, 21.014675), # źle oznaczony
+    },
+    {
+        "route_name":  "Wenedów -> Gwiaździsta",
+        "origin": (52.259009, 21.006345),
+        "destination": (52.272982, 20.996899), # taki sam dla wszystkich (optymnalny)
+    },
+    {
+        "route_name":  "Muzeum Narodowe -> Saska",
+        "origin": (52.231824, 21.021656),
+        "destination": (52.238479, 21.055727), # taki sam dla wszystkich (optymnalny)
+    },
+    {
+        "route_name":  "Środkowa -> Ruchliwa",
+        "origin": (52.176839, 20.917367),
+        "destination": (52.175326, 20.946316), # taki sam dla wszystkich (optymnalny)
+    },
+    {
+        "route_name":  "Młoda -> Bystrzycka",
+        "origin": (52.160059, 21.210821),
+        "destination": (52.161548, 21.214515), # błąd ?
+    },
+    {
+        "route_name":  "Owalna -> Sobótki",
+        "origin": (52.207060, 20.924255),
+        "destination": (52.203198, 20.924083), # taki sam dla wszystkich (optymnalny)
+    },
 ]
 
 
