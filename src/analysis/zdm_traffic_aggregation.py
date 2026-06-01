@@ -37,6 +37,12 @@ def main():
 
     for road_key, group in df.dropna(subset=["road_key"]).groupby("road_key"):
         latest = group.sort_values("measurement_time").iloc[-1]
+        vc_max = group["vehicle_count"].max()
+        vc_mean = group["vehicle_count"].mean()
+        if pd.isna(vc_max):
+            vc_max = 0
+        if pd.isna(vc_mean):
+            vc_mean = 0.0
 
         grouped_rows.append({
             "road_key": road_key,
@@ -45,10 +51,12 @@ def main():
             "stations_count": group["station_id"].nunique(),
             "date_min": group["measurement_time"].min(),
             "date_max": group["measurement_time"].max(),
+            "traffic_factor_latest": round(float(latest["traffic_factor"]), 3),
             "traffic_factor_max": round(float(group["traffic_factor"].max()), 3),
             "traffic_factor_mean": round(float(group["traffic_factor"].mean()), 3),
-            "vehicle_count_max": int(group["vehicle_count"].max()),
-            "vehicle_count_mean": round(float(group["vehicle_count"].mean()), 2),
+            "vehicle_count_max": int(vc_max),
+            "vehicle_count_mean": round(float(vc_mean), 2),
+            "source_latest": latest.get("source"),
         })
 
     result = pd.DataFrame(grouped_rows).sort_values("road_name")
