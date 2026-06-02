@@ -53,7 +53,7 @@ Projekt został przygotowany jako środowisko kontenerowe - uruchamiany jest za 
 
 \noindent \textbf{Pandas} służy w projekcie do przetwarzania danych tabelarycznych, agregacji wyników, zapisu plików wynikowych.\\
 
-\noindent W ramach konteneru zainstalowane są także narzędzia \textbf{Apache Kafka} oraz \textbf{Apache Spark}. To pierwsze jest systemem wymiany danych, który umożliwia przesyłanie danych między różnymi etapami potoku przetwarzania. Apache Spark, natomiast, umożliwia przetwarzanie danych strumieniowych i transformację danych surowych w formę, która jest już gotowa do analizy.\\
+\noindent W ramach kontenera zainstalowane są także narzędzia \textbf{Apache Kafka} oraz \textbf{Apache Spark}. To pierwsze jest systemem wymiany danych, który umożliwia przesyłanie danych między różnymi etapami potoku przetwarzania. Apache Spark, natomiast, umożliwia przetwarzanie danych strumieniowych i transformację danych surowych w formę, która jest już gotowa do analizy.\\
 
 \noindent W projekcie nie wykorzystano Hadoopa, co jest zgodne z przyjętym zakresem projektu (był traktowany jako opcjonalne narzędzie). Zamiast tego dane są przetwarzane lokalnie, a wyniki są zapisywane w strukturze katalogów projektu.\\
 
@@ -257,6 +257,20 @@ Przykładowy fragment odpowiedzi (rzeczywisty wynik, ograniczony do pojedynczego
         \end{tcolorbox}
 \end{itemize}
 
+\begin{figure}[H]
+    \includegraphics[width=0.9\textwidth]{png/avg_entropy_by_type.png}
+    \caption{Średnia entropia, rozumiana w sensie teorii informacji, dla poszczególnych typów plików źródłowych (nieprzetworzonych)}
+\end{figure}
+
+\begin{figure}[H]
+    \includegraphics[width=0.9\textwidth]{png/avg_size_by_type.png}
+    \caption{Średni rozmiar pliku źródłowego według typu pliku źródłowego (nieprzetworzonego)}
+\end{figure}
+
+Pliki typu pdf są najmniej ustrukturyzowanym źródłem danych w naszym projekcie, co potwierdza
+wysoka entropia zawartości tych plików. Największy udział w danych źródłowych pod względem rozmiaru
+mają pliki w formacie JSON, które jednocześnie charakteryzuje najmniejsza entropia, co może
+oznaczać najwyższy poziom ustrukturyzowania spośród wszystkich wykorzystywanych typów plików.
 \subsubsection{Pobór danych - Kafka}
 Pobór danych realizowany jest przez skrypty loaderów, które zapisują dane wejściowe jako
 wiadomości JSON w tematach Apache Kafka. Poniżej zestawiono, co Kafka przyjmuje, do jakich
@@ -556,15 +570,15 @@ Na podstawie porównań można stwierdzić, że algorytm konsekwentnie wyznacza 
 i poprawnie różnicuje je według przyjętych miar (dystans, czas bazowy, czas skorygowany).
 Korekta kosztu na podstawie danych ZDM i pogody potrafi zmienić wybór trasy i obniżyć czas
 przejazdu względem wariantu bazowego, co potwierdza sens podejścia. Różnice względem Google Maps
-wskazują na potrzebę dostosownia współczynników oraz uzupełnienia ograniczeń w grafie OSM
+wskazują na potrzebę dostosowania współczynników oraz uzupełnienia ograniczeń w grafie OSM
 (np. zakazy skrętu, zamknięcia). \\
-Algorytm skorygowany radzi sobie lepiej niż bazowy oraz najkrótrzy, jednak nadal nie obsługuje 
+Algorytm skorygowany radzi sobie lepiej niż bazowy oraz najkrótszy, jednak nadal nie obsługuje 
 ruchu w czasie rzeczywistym, co oznacza że nie powinien być używany do omijania zagęszczeń w
 czasie rzeczywistym, a raczej do planowania trasy z uwzględnieniem danych historycznych i kontekstowych.
 
 \section{Dalsze kierunki badania}
 W kolejnych etapach powinniśmy skupić się na poprawieniu znajdowania najszybszej trasy oraz
-poprawie szaczowania czasu przejazdu. W tym celu należy rozważyć następujące kierunki:
+poprawie szacowania czasu przejazdu. W tym celu należy rozważyć następujące kierunki:
 \begin{itemize}
     \item \textbf{Kalibracja współczynników} -- zmiana \textit{traffic\_factor} oraz
     \textit{speed\_factor} aby poprawić trafność wyznaczanych tras.
