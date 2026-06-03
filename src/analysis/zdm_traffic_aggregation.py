@@ -6,6 +6,7 @@ import pandas as pd
 
 INPUT_PATH = Path("/app/data/processed/traffic_measurements")
 OUTPUT_PATH = Path("/app/data/processed/zdm_traffic_by_road.csv")
+HOURLY_OUTPUT_PATH = Path("/app/data/processed/zdm_traffic_by_road_hour_direction.csv")
 
 
 def normalize_road_name(value):
@@ -32,6 +33,7 @@ def main():
 
     df["road_key"] = df["road_name"].apply(normalize_road_name)
     df["measurement_time"] = pd.to_datetime(df["measurement_time"], errors="coerce")
+    df["measurement_hour"] = df["measurement_time"].dt.hour
 
     grouped_rows = []
 
@@ -61,11 +63,53 @@ def main():
 
     result = pd.DataFrame(grouped_rows).sort_values("road_name")
 
+    hourly_rows = []
+
+    hourly_group_columns = ["road_key", "measurement_hour", "direction"]
+    hourly_df = df.dropna(subset=["road_key", "measurement_hour"])
+    if "direction" not in hourly_df.columns:
+        hourly_df = hourly_df.assign(direction=None)
+
+    for group_key, group in hourly_df.groupby(hourly_group_columns, dropna=False):
+        road_key, measurement_hour, direction = group_key
+        latest = group.sort_values("measurement_time").iloc[-1]
+        vc_max = group["vehicle_count"].max()
+        vc_mean = group["vehicle_count"].mean()
+        if pd.isna(vc_max):
+            vc_max = 0
+        if pd.isna(vc_mean):
+            vc_mean = 0.0
+
+        hourly_rows.append({
+            "road_key": road_key,
+            "road_name": latest["road_name"],
+            "measurement_hour": int(measurement_hour),
+            "direction": direction,
+            "measurements_count": len(group),
+            "stations_count": group["station_id"].nunique(),
+            "date_min": group["measurement_time"].min(),
+            "date_max": group["measurement_time"].max(),
+            "traffic_factor_latest": round(float(latest["traffic_factor"]), 3),
+            "traffic_factor_max": round(float(group["traffic_factor"].max()), 3),
+            "traffic_factor_mean": round(float(group["traffic_factor"].mean()), 3),
+            "vehicle_count_max": int(vc_max),
+            "vehicle_count_mean": round(float(vc_mean), 2),
+            "source_latest": latest.get("source"),
+        })
+
+    hourly_result = pd.DataFrame(hourly_rows).sort_values(
+        ["road_name", "measurement_hour", "direction"],
+        na_position="last",
+    )
+
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(OUTPUT_PATH, index=False)
+    hourly_result.to_csv(HOURLY_OUTPUT_PATH, index=False)
 
     print(f"Zapisano: {OUTPUT_PATH}")
     print(f"Liczba ulic po agregacji APR: {len(result)}")
+    print(f"Zapisano: {HOURLY_OUTPUT_PATH}")
+    print(f"Liczba wierszy po agregacji APR po godzinie i kierunku: {len(hourly_result)}")
     print()
     print(result.head(30))
 

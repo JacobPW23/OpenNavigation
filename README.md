@@ -149,6 +149,78 @@ Podgląd wyników:
 cat data/results/route_initial_analysis/routes_comparison.csv
 ```
 
+## Aplikacja graficzna do wyznaczania trasy
+
+Aplikacja webowa pozwala wybrać punkt startowy i końcowy na mapie, a następnie
+porównać warianty trasy liczone na grafie OSMnx.
+
+Do działania aplikacji potrzebne są pakiety z obrazu Docker oraz pliki
+zagregowanych danych:
+
+```text
+data/processed/zdm_speed_by_road.csv
+data/processed/zdm_traffic_by_road.csv
+```
+
+Te dwa pliki są wersjonowane w repozytorium. Jeśli ich brakuje, aplikacja nadal
+uruchomi się, ale trasy będą korzystać głównie z bazowych danych OSMnx.
+
+Przed pierwszym użyciem zalecane jest zbudowanie i zapisanie grafu drogowego:
+
+```bash
+docker compose exec opennavigation python src/analysis/build_routing_graph.py
+```
+
+Wynik:
+
+```text
+data/processed/routing_graph.graphml
+```
+
+Plik `routing_graph.graphml` nie musi być commitowany. Jeśli już istnieje,
+aplikacja go wczyta. Jeśli go nie ma, aplikacja spróbuje pobrać graf przy
+pierwszym zapytaniu o trasę, co trwa dłużej i wymaga dostępu do sieci.
+
+Opcjonalnie, jeśli mają działać godzinowe współczynniki APR dla pola `Odjazd`,
+można przygotować plik:
+
+```text
+data/processed/zdm_traffic_by_road_hour_direction.csv
+```
+
+Tworzy go agregacja danych ruchu:
+
+```bash
+docker compose exec opennavigation python src/analysis/zdm_traffic_aggregation.py
+```
+
+Jeśli pliku godzinowego nie ma, aplikacja użyje zwykłej agregacji
+`zdm_traffic_by_road.csv`.
+
+Uruchomienie aplikacji:
+
+```bash
+docker compose exec opennavigation python src/analysis/route_web.py
+```
+
+Następnie otworzyć w przeglądarce:
+
+```text
+http://localhost:8050
+```
+
+W aplikacji można:
+
+- kliknąć na mapie punkt startowy i punkt docelowy,
+- wybrać datę i godzinę odjazdu,
+- policzyć trasę przyciskiem `Policz`,
+
+Wyniki ostatniego zapytania są zapisywane w:
+
+```text
+data/results/route_web/
+```
+
 ## Sprawdzenie działania modelu warstwowego
 
 Po uruchomieniu analizy można sprawdzić, z jakich źródeł danych korzystały krawędzie trasy:
