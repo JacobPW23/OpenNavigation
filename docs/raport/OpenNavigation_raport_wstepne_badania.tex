@@ -29,65 +29,85 @@ Propozycja trasy na podstawie otwartych danych nawigacyjnych dla miasta stołecz
 
 \section{Wstęp}
 
-Niniejszy raport jest kontynuacją prac dążących do opracowania modelu propozycji trasy na podstawie otwartych danych 
-nawigacyjnych. Główny cel tego dokumentu to przedstawienie stworzonej w ramach projektu infrastruktury oraz potoku 
-przetwarzania danych. Opisana zostanie również wstępna analiza wyżej wymienionego problemu oraz wnioski 
-wynikające z tej analizy.
+Niniejszy raport jest podsumowaniem kontynuowanych działań dążących do opracowania modelu propozycji trasy przejazdu w Warszawie,
+na podstawie dostępnych jawnie danych nawigacyjnych. Główny cel tego dokumentu to przedstawienie infrastruktury stworzonej w ramach projektu, 
+potoku przetwarzania danych oraz efektu działania systemu w porównaniu z istniejącymi rozwiązaniami. Opisana zostanie również wstępna analiza
+wyżej wymienionego problemu oraz wnioski wyciągnięte z tej analizy.
 
-W poprzednim dokumencie zawarty został przegląd tematyki, wstępna propozycja źródeł oraz narzędzi 
-wykorzystanych do wykonania projektu, oraz problemów i ograniczeń związanych z wybranymi danymi.
+W poprzednim dokumencie został zawarty przegląd tematyki, wstępna propozycja źródeł i narzędzi 
+wykorzystanych do wykonania projektu oraz problemów i ograniczeń związanych z wybranymi danymi.
 
-Dla przypomnienia - zaproponowana została reprezentacja miasta w postaci grafu skierowanego, 
-gdzie wierzchołki są przecięciami lub zakończeniami dróg a krawędzie
-są faktycznymi odcinkami dróg, z odpowiednim zestawem atrybutów - długość, typ drogi, liczba pasów, natężenie ruchu
-etc. Propozycja ta została wykorzystana do stworzenia wstępnego rozwiązania, które zostanie przedstawione poniżej.
+W celu przypomnienia - zaproponowana została reprezentacja miasta w postaci grafu skierowanego, 
+gdzie wierzchołki są przecięciami (skrzyżowaniami) lub zakończeniami dróg, a krawędzie
+są rzeczywistymi odcinkami dróg. Każda krawędź posiada odpowiedni zestaw atrybutów:
+\begin{itemize}
+    \item długość;
+    \item typ drogi;
+    \item liczba pasów;
+    \item natężenie ruchu.
+\end{itemize} 
+Propozycja ta została wykorzystana do stworzenia wstępnego rozwiązania, opisanego w poprzednim raporcie. 
+Rozwiązanie to zostało przedstawione poniżej.
+
+Aby zachować pełnię oraz spójność dokumentu, niektóre informacje zostały powielone oraz zaktualizowane o najnowsze zmiany w projekcie
+(przykładowo: opisy źródeł danych, które znajdowały się w poprzedniej wersji projektu). Dodatkowo zostaną zawarte nowe informacje dotyczące 
+aspektów programu, które zostały dodane. Dzięki temu, dokument ten jest spójnym opisem całego projektu.
 
 
 
 \section{Infrastruktura oraz potok przetwarzania danych}
 
 \subsection{Przedstawienie infrastruktury}
-Projekt został przygotowany jako środowisko kontenerowe - uruchamiany jest za pomocą \textbf{Docker Compose}. Pozwala to na odtworzenie środowiska na różnych urządzeniach, nie musząc instalować ręcznie zależności systemowych / bibliotek W kontenerze \textbf{opennavigation} znajdują się narzędzia potrzebne do pobierania, przetwarzania i analizy danych.\\
+Projekt został przygotowany jako środowisko skonteneryzowane w technologii \emph{Docker}. Projekt można uruchamić za pomocą komendy \verb|Docker Compose|.
+Pozwala to na odtworzenie środowiska na różnych urządzeniach bez potrzeby ręcznego instalowania zależności systemowych lub bibliotek.
+W kontenerze \textbf{opennavigation} znajdują się wszystkie narzędzia potrzebne do pobierania, przetwarzania i analizy danych.\\
 
-\noindent Język \textbf{Python} został wybrany jako główny język implementacji. Jednakże \textbf{OSMnx} i \textbf{NetworkX} są wykorzystywane do pracy z grafem drogowym Warszawy.\\
+W ramach projektu wykorzystano następujący stos technologiczny:
+\begin{enumerate}
+    \item \textbf{Python} - główny język implementacji;
+    \item \textbf{OSMnx} i \textbf{NetworkX} - biblioteki Python'owe wykorzystywane do pracy z grafem drogowym Warszawy;
+    \item \textbf{Pandas} - biblioteka wykorzystana do przetwarzania danych tabelarycznych, agregacji wyników oraz zapisu plików wynikowych;
+    \item \textbf{Apache Kafka} - system wymiany danych umożliwiający przesyłanie danych w różnych etapach potoku przetwarzania danych;
+    \item \textbf{Apache Spark} - rozwiązanie wykorzystywane do przetwarzania danych stumieniowych oraz transformację surowych danych w dane gotowe do analizy.
+\end{enumerate}
 
-\noindent \textbf{Pandas} służy w projekcie do przetwarzania danych tabelarycznych, agregacji wyników, zapisu plików wynikowych.\\
-
-\noindent W ramach kontenera zainstalowane są także narzędzia \textbf{Apache Kafka} oraz \textbf{Apache Spark}. To pierwsze jest systemem wymiany danych, który umożliwia przesyłanie danych między różnymi etapami potoku przetwarzania. Apache Spark, natomiast, umożliwia przetwarzanie danych strumieniowych i transformację danych surowych w formę, która jest już gotowa do analizy.\\
-
-\noindent W projekcie nie wykorzystano Hadoopa, co jest zgodne z przyjętym zakresem projektu (był traktowany jako opcjonalne narzędzie). Zamiast tego dane są przetwarzane lokalnie, a wyniki są zapisywane w strukturze katalogów projektu.\\
+\noindent W projekcie nie wykorzystano czystego Hadoopa, co jest zgodne z przyjętym zakresem projektu - technologia ta była traktowana
+jako opcjonalne narzędzie. Zamiast tego, dane są przetwarzane lokalnie a wyniki są zapisywane w strukturze katalogów projektu.\\
 
 \noindent Struktura danych w projekcie podzielona jest na trzy katalogi:
 \begin{itemize}
-    \item \textbf{data/raw} - przechowuje dane surowe, m. in. raporty XLSX/PDF zaczerpnięte ze źródeł zewnętrznych
-    \item \textbf{data/processed} - przechowuje dane oczyszczone oraz zagregowane, które wykorzystywane są już prosto przez analizę tras
-    \item \textbf{data/results} - przechowuje wyniki analiz takie jak porównania tras
+    \item \textbf{data/raw} - katalog przechowujący dane surowe, m.in. raporty XLSX/PDF zaczerpnięte ze źródeł zewnętrznych;
+    \item \textbf{data/processed} - katalog przechowujący dane oczyszczone oraz zagregowane, wykorzystywane do zadania analizy tras;
+    \item \textbf{data/results} - katalog przechowujący wyniki analiz - m.in. porównanie tras.
 \end{itemize}
 
-\noindent \\W obecnej wersji projektu, możliwe jest uruchomienie pełnej analizy trasy:
+\noindent \\W obecnej wersji projektu, możliwe jest uruchomienie pełnej analizy trasy w następujących krokach:
 \begin{enumerate}
-    \item Pobranie danych źródłowych (np. raporty XLSX/PDF z zewnętrznych źródeł)
-    \item Przetworzenie danych (czyszczenie, transformacja, agregacja)
-    \item Wyznaczenie trasy na podstawie przetworzonych danych
-    \item Porównanie różnych wariantów trasy według różnych funkcji kosztu
+    \item Pobranie danych źródłowych (raporty XLSX/PDF z zewnętrznych źródeł);
+    \item Przetworzenie danych (czyszczenie, transformacja, agregacja);
+    \item Wyznaczenie trasy na podstawie przetworzonych danych;
+    \item Porównanie różnych wariantów trasy według odpowiednich funkcji kosztu.
 \end{enumerate}
 
 \subsection{Potok danych}
 
-\noindent Potok danych został przygotowany w takim sposób, aby połączyć różne źródła danych w jeden spójny model kosztu przejazdu.\\
+\noindent Potok danych został przygotowany w sposób, który umożliwia łączenie różnych źródła danych w jeden, spójny model kosztu przejazdu.\\
 
-\noindent Podstawą analizy jest graf drogowy Warszawy - stworzony na podstawie danych z \textbf{OpenStreetMap} z pomocą biblioteki \textbf{OSMnx}. Graf ten jest następnie wzbogacany o dane:
+\noindent Podstawą analizy jest graf drogowy Warszawy, stworzony na podstawie danych pobranych z \textbf{OpenStreetMap} za pomocą biblioteki \textbf{OSMnx}. 
+Pierwotny, pobrany graf jest wzbogacany o następujące dane:
 \begin{itemize}
-    \item \textbf{ZDM} - dane dotyczące natężenia ruchu oraz średnich prędkości pojazdów (dane te są jedynie punktowe, więc są wykorzystywane do korekty kosztu przejazdu tylko dla tych krawędzi, dla których są dostępne)
-    \item \textbf{Dane pogodowe} - dane dotyczące warunków pogodowych, które mogą wpływać na czas przejazdu, np. deszcz czy mgła
+    \item \textbf{ZDM} - dane dotyczące natężenia ruchu oraz średnich prędkości pojazdów. Dane te są punktowe, więc są wykorzystywane do korekty
+                            kosztu przejazdu tylko dla tych krawędzi, dla których są dostępne. W ramach poprawy modelu, można wykorzystać alternatywne
+                            źródło strumieniowych danych \textbf{TomTom} opisane poniżej;
+    \item \textbf{Dane pogodowe} - dane dotyczące warunków pogodowych, które wpływają na czas przejazdu - deszcz, mgła etc.
 \end{itemize}
 
 \noindent \\\textbf{Potok} obejmuje następujące etapy:
 \begin{itemize}
-    \item Pobór danych
-    \item Czyszczenie i transformację danych
-    \item Agregację danych do postaci użytecznej w analizie tras
-    \item Zapis wyników pośrednich i końcowych
+    \item Pobór danych;
+    \item Czyszczenie i transformację danych;
+    \item Agregację danych do postaci użytecznej w analizie tras;
+    \item Zapis wyników pośrednich i końcowych.
 \end{itemize}
 
 \noindent \\Szczegółowy opis poszczególnych etapów potoku przedstawiono w kolejnych podpunktach.
@@ -96,9 +116,9 @@ Projekt został przygotowany jako środowisko kontenerowe - uruchamiany jest za 
 Źródła danych obejmują zarówno statyczny opis sieci drogowej, jak i dane zmienne w czasie.
 W projekcie wykorzystano następujące źródła:
 \begin{itemize}
-    \item \textbf{OpenStreetMap / Overpass API} -- geometria sieci drogowej Warszawy oraz atrybuty
-    odcinków (np. \textit{highway}, \textit{maxspeed}, \textit{lanes}, \textit{oneway}). Te dane są
-    podstawą do budowy grafu tras i wyliczenia bazowych czasów przejazdu.
+    \item \textbf{OpenStreetMap / Overpass API} - źródło zawierające geometrię sieci drogowej Warszawy oraz atrybuty
+    odcinków (np. \textit{highway}, \textit{maxspeed}, \textit{lanes}, \textit{oneway}). Te dane stanowią
+    podstawę do budowy grafu ulic oraz wyznaczenia bazowych czasów przejazdu.
     Przykład zapytania Overpass API używanego w projekcie (wybór dróg głównych dla Warszawy):
 \begin{tcolorbox}
 \begin{verbatim}
@@ -147,14 +167,14 @@ Przykładowy fragment odpowiedzi (rzeczywisty wynik, ograniczony do pojedynczego
 \end{verbatim}
 \end{tcolorbox}
 
-    \item \textbf{ZDM Warszawa (APR)} -- punktowe pomiary natężenia ruchu na wybranych odcinkach.
+    \item \textbf{ZDM Warszawa (APR)} - źródło zawierające punktowe pomiary natężenia ruchu na wybranych odcinkach.
     Dane są pobierane z panelu \textit{Analiza ruchu na drogach online}
    {\sloppy (\url{https://zdm.waw.pl/dzialania/badania-i-analizy/analiza-ruchu-na-drogach/analiza-ruchu-na-drogach-online/})\fussy}
     w postaci raportu XLSX.
-    Pobranie jest zautomatyzowane skryptem \verb|zdm_online_traffic_loader.py|,
+    Pobieranie jest zautomatyzowane skryptem \verb|zdm_online_traffic_loader.py|,
     który steruje interfejsem WWW (Playwright) i zapisuje raport do pliku.
     
-    Tabela \ref{tab:zdm-apr-format} przedstawia uproszczony format rekordu APR, który trafia do potoku
+    Tabela \ref{tab:zdm-apr-format} przedstawia uproszczony format rekordu APR, który trafia do potoku danych
     po wczytaniu raportu XLSX.
 
     \begin{table}[H]
@@ -179,11 +199,11 @@ Przykładowy fragment odpowiedzi (rzeczywisty wynik, ograniczony do pojedynczego
         \end{tabular}
     \end{table}
 
-    \item \textbf{Raporty prędkości ZDM (PDF)} -- cykliczne raporty z uśrednionymi prędkościami,
-    publikowane na dashboardzie ZDM
+    \item \textbf{Raporty prędkości ZDM (PDF)} - źródło zawierające cykliczne raporty z uśrednionymi prędkościami,
+    publikowane na pulpicie ZDM
     (\url{https://zdm-warszawa.maps.arcgis.com/apps/dashboards/20bfffc9bae544b5a1cdfaad7be38c40}).
-    Pobranie plików jest zautomatyzowane skryptem \verb|zdm_speed_report_downloader.py|.
-    Następnie skrypt \verb|zdm_speed_pdf_parser.py| parsuje PDF-y do CSV
+    Pobieranie plików jest zautomatyzowane skryptem \verb|zdm_speed_report_downloader.py|.
+    Następnie skrypt \verb|zdm_speed_pdf_parser.py| przetwarza pliki PDF do formatu CSV
     (\verb|zdm_speed_measurements.csv|).
 
     Tabela \ref{tab:zdm-speed-format} pokazuje uproszczony format rekordu z raportów prędkości.
@@ -216,9 +236,9 @@ Przykładowy fragment odpowiedzi (rzeczywisty wynik, ograniczony do pojedynczego
             vdop\_raw & Dopuszczalna prędkość (surowy zapis z PDF). \\ \hline
         \end{tabular}
     \end{table}
-        \item \textbf{Open-Meteo} -- dane pogodowe godzinowe (opady, wiatr, widoczność, temperatura),
-        pobierane z API. Pobranie realizuje skrypt
-        \verb|weather_loader.py|, który zapisuje pełny JSON do Kafki
+        \item \textbf{Open-Meteo} - źródło danych pogodowych w podziale godzinowym - opady, wiatr, widoczność, temperatura.
+        Pobieranie z API realizuje skrypt
+        \verb|weather_loader.py|, który zapisuje pełny plik JSON do tematu Kafki
         (temat \textit{warszawa-raw-weather}). Dane te stanowią kontekst do dodatkowej korekty kosztu.
 
         Przykład zapytania API (parametry używane w projekcie):
@@ -255,12 +275,67 @@ Przykładowy fragment odpowiedzi (rzeczywisty wynik, ograniczony do pojedynczego
 }
         \end{verbatim}
         \end{tcolorbox}
+        \item \textbf{TomTom} - źródło danych strumieniowych, z którego pozyskiwane są informacje dotyczące szacowanych, aktualnych 
+        prędkości oraz czasów przejazdu na drogach najbliższych do wybranych, wysłanych przez użytkownika API współrzędnych - wszystkie te dane są, 
+        oczywiście, obarczone współczynnikiem pewności \emph{confidence}.
+
+        Wykorzystanie tych danych realizuje skrypt \verb|tomtom_traffic_loader.py| zapisujący dane w Kafce pod tematem \emph{warszawa-raw-traffic}.
+        Dzięki tym danym, które po transformacji za pomocą \verb|tomtom_edge_mapping| są transformowane do formatu obsługiwanego przez instniejący plik  
+        \verb|zdm_traffic_aggregation.py|, stanowią dodatkową podstawę do analizy korków na drogach Warszawy.
+        W ramach zyskania dostęp do danych TomTom potrzebny jest klucz API. Można go zdobyć bezkosztownie na stronie \emph{my.tomtom.com}. Po uzyskaniu
+        należy owy klucz wstawić do pliku \verb|.env|.
+
+        W projekcie, w celu pobrania danych wykorzystywane jest zapytanie GET. Przykład wykorzystania API TomTom oraz uzyskanych od niego 
+        informacji znajduje się poniżej:
+        \begin{tcolorbox}
+            \begin{verbatim}
+{
+    https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/
+    10/json,
+    params={
+        "key": TOMTOM_API_KEY,
+        "point": f"{52.218662},{21.017080}",
+        "unit": "KMPH",
+        "style": "relative",
+    },
+    timeout=30,
+}
+
+...
+
+{
+  "flowSegmentData": {
+    "-xmlns": "http://lbs.tomtom.com/services",
+    "-version": "traffic-service 2.0.004",
+    "frc": "FRC2",
+    "currentSpeed": 34,
+    "freeFlowSpeed": 50,
+    "currentTravelTime": 43,
+    "freeFlowTravelTime": 30,
+    "confidence": 0.71,
+    "roadClosure": true,
+    "coordinates": {
+      "coordinate": [
+        {
+          "latitude": 52.218662,
+          "longitude": 21.017082
+        }
+      ]
+    }
+  }
+}
+            \end{verbatim}
+        \end{tcolorbox}
+
+
 \end{itemize}
 
 \begin{figure}[H]
     \includegraphics[width=0.9\textwidth]{png/avg_entropy_by_type.png}
     \caption{Średnia entropia, rozumiana w sensie teorii informacji, dla poszczególnych typów plików źródłowych (nieprzetworzonych)}
 \end{figure}
+
+\subsubsection{Struktura surowych danych - wykresy}
 
 \begin{figure}[H]
     \includegraphics[width=0.9\textwidth]{png/avg_size_by_type.png}
@@ -272,32 +347,40 @@ wysoka entropia zawartości tych plików. Największy udział w danych źródło
 mają pliki w formacie JSON, które jednocześnie charakteryzuje najmniejsza entropia, co może
 oznaczać najwyższy poziom ustrukturyzowania spośród wszystkich wykorzystywanych typów plików.
 \subsubsection{Pobór danych - Kafka}
-Pobór danych realizowany jest przez skrypty loaderów, które zapisują dane wejściowe jako
-wiadomości JSON w tematach Apache Kafka. Poniżej zestawiono, co Kafka przyjmuje, do jakich
-tematów oraz gdzie dane są dalej przekazywane:
+Pobór danych realizowany jest przez skrypty wczytujące, które zapisują dane wejściowe jako
+wiadomości JSON w tematach Apache Kafka. Poniżej znajduje się zestawienie przyjmowanych przez Kafkę danych z podziałem 
+na poszczególne tematy oraz dalszy kierunek przekazywania danych:
 \begin{itemize}
-    \item \textbf{warszawa-raw-streets} -- dane z Overpass API; producent
-    \path{overpass_raw_street_loader.py}; konsument Spark
-    \path{overpass_transformations.py}; zapis do
-    \path{/app/data/processed/osm_ways} oraz publikacja do tematu
-    \textit{warszawa-processed-edges}.
-    \item \textbf{warszawa-raw-traffic} -- dane APR z ZDM; producenci
-    \path{zdm_traffic_loader.py} lub \path{traffic_loader.py};
-    konsument \path{traffic_transformations.py}; zapis do
-    \path{/app/data/processed/traffic_measurements}, a następnie agregacja
-    \path{zdm_traffic_aggregation.py} do
-    \path{/app/data/processed/zdm_traffic_by_road.csv}.
-    \item \textbf{warszawa-raw-weather} -- dane Open-Meteo; producent
-    \path{weather_loader.py}; konsument
-    \path{weather_transformations.py}; zapis do
-    \path{/app/data/processed/weather_observations}.
+    \item \textbf{warszawa-raw-streets} -- 
+    \begin{itemize} 
+        \item Źródło: Overpass API;
+        \item Producent: \path{overpass_raw_street_loader.py};
+        \item Konsument: \path{overpass_transformations.py}; 
+        \item Zapis do katalogu: \path{/app/data/processed/osm_ways} 
+        \item Publikacja do tematu: \textit{warszawa-processed-edges}.
+    \end{itemize}
+    \item \textbf{warszawa-raw-traffic}
+    \begin{itemize} 
+        \item Źródło: ZDM;
+        \item Producent: \path{zdm_traffic_loader.py} lub \path{traffic_loader.py};
+        \item Konsument: \path{traffic_transformations.py}; 
+        \item Zapis do katalogu: \path{/app/data/processed/traffic_measurements};
+        \item Późniejsza agregacja: \path{zdm_traffic_aggregation.py}, \path{/app/data/processed/zdm_traffic_by_road.csv}.
+    \end{itemize} 
+    \item \textbf{warszawa-raw-weather}
+    \begin{itemize} 
+        \item Źródło: Open-Meteo;
+        \item Producent: \path{weather_loader.py};
+        \item Konsument: \path{weather_transformations.py}; 
+        \item Zapis do katalogu: \path{/app/data/processed/weather_observations}.
+    \end{itemize} 
     \item \textbf{warszawa-processed-edges} -- ujednolicone krawędzie grafu po transformacji OSM;
     temat wyjściowy z \path{overpass_transformations.py}, możliwy do dalszego
     wykorzystania analitycznego.
 \end{itemize}
 
-W obecnej wersji zasilanie odbywa się wsadowo (mikro-batche), jednak potok działa w trybie
-streamingowym po stronie Apache Spark. Kafka pełni rolę bufora i kolejki zdarzeń,
+W obecnej wersji zasilanie odbywa się wsadowo (mikro-batch), jednak potok działa w trybie
+strumieniowym po stronie Apache Spark. Kafka pełni rolę bufora i kolejki zdarzeń,
 co zwiększa powtarzalność obliczeń i pozwala na odtwarzanie danych od wybranego offsetu.
 
 \subsubsection{Czyszczenie i transformacja danych - Apache Spark, OSMnx}
@@ -356,10 +439,13 @@ uruchomić kontener na podstawie zbudowanego obrazu:
 
 \begin{tcolorbox}
 \begin{verbatim}
-> git clone https://github.com/JacobPW23/OpenNavigation
-> cd OpenNavigation
-> docker compose build
-> docker compose up -d
+
+    git clone https://github.com/JacobPW23/OpenNavigation
+    cd OpenNavigation
+    docker compose build
+    docker compose up -d
+
+
 \end{verbatim}
 \end{tcolorbox}
 
@@ -373,15 +459,27 @@ Poniżej przedstawiono komendy do pobrania danych z poszczególnych źródeł:
 \textbf{Dane APR ZDM}
 \begin{tcolorbox}
 \begin{verbatim}
-> docker compose exec opennavigation python \
+
+    docker compose exec opennavigation python \
+
+
     src/ingestion/zdm_online_traffic_loader.py
-> docker compose exec opennavigation python \
+
+    docker compose exec opennavigation python \
+
+
     src/ingestion/zdm_traffic_loader.py
-> docker compose exec opennavigation spark-submit \
+
+    docker compose exec opennavigation spark-submit \
+
+
     --packages \
     org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
     src/processing/traffic_transformations.py
-> docker compose exec opennavigation python \
+
+    docker compose exec opennavigation python \
+
+
     src/analysis/zdm_traffic_aggregation.py
 \end{verbatim}
 \end{tcolorbox}
@@ -391,11 +489,20 @@ Wyniki: \path{data/processed/zdm_traffic_by_road.csv}.
 \textbf{Raporty prędkości ZDM (PDF)}
 \begin{tcolorbox}
 \begin{verbatim}
-> docker compose exec opennavigation python \
+
+    docker compose exec opennavigation python \
+
+
     src/ingestion/zdm_speed_report_downloader.py
-> docker compose exec opennavigation python \
+
+    docker compose exec opennavigation python \
+
+
     src/ingestion/zdm_speed_pdf_parser.py
-> docker compose exec opennavigation python \
+
+    docker compose exec opennavigation python \
+
+
     src/analysis/zdm_speed_aggregation.py
 \end{verbatim}
 \end{tcolorbox}
@@ -405,9 +512,15 @@ Wyniki: \path{data/processed/zdm_speed_by_road.csv}.
 \textbf{OSM / Overpass}
 \begin{tcolorbox}
 \begin{verbatim}
-> docker compose exec opennavigation python \
+
+    docker compose exec opennavigation python \
+
+
     src/ingestion/overpass_raw_street_loader.py
-> docker compose exec opennavigation spark-submit \
+
+    docker compose exec opennavigation spark-submit \
+
+
     --packages \
     org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
     src/processing/overpass_transformations.py
@@ -419,9 +532,15 @@ Wyniki: temat \textit{warszawa-processed-edges}.
 \textbf{Pogoda (Open-Meteo)}
 \begin{tcolorbox}
 \begin{verbatim}
-> docker compose exec opennavigation python \
+
+    docker compose exec opennavigation python \
+
+
     src/ingestion/weather_loader.py
-> docker compose exec opennavigation spark-submit \
+
+    docker compose exec opennavigation spark-submit \
+
+
     --packages \
     org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
     src/processing/weather_transformations.py
@@ -463,7 +582,10 @@ gdzie współrzędzne \textit{origin} oraz \textit{destination} są podawane jak
 Aby uruchomić analizę tras, należy wykonać plik analizy tras po wprowadzeniu swojej konfigurazji. Komenda:
 \begin{tcolorbox}
     \begin{verbatim}
-> docker compose exec opennavigation python \
+
+    docker compose exec opennavigation python \
+
+
     src/analysis/route_initial_analysis.py
     \end{verbatim}
 \end{tcolorbox} 
