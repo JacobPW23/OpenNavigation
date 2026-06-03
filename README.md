@@ -10,6 +10,7 @@ Projekt korzysta z kilku źródeł danych:
 
 - **OpenStreetMap / OSMnx** — graf drogowy Warszawy i bazowe czasy przejazdu,
 - **ZDM Warszawa APR** — natężenie ruchu drogowego,
+- **TomTom Traffic Flow API** — bieżące prędkości i stan ruchu dla wybranych punktów w Warszawie,
 - **ZDM raporty prędkości PDF** — średnie prędkości na wybranych ulicach,
 - **Open-Meteo** — dane pogodowe.
 
@@ -30,6 +31,10 @@ zdm_apr
 zdm_speed
 osmnx_base
 ```
+
+
+
+
 
 ## Technologie
 
@@ -328,6 +333,79 @@ Wynik:
 ```text
 data/processed/zdm_traffic_by_road.csv
 ```
+
+## Odtworzenie danych TomTom od zera
+
+Surowe dane TomTom nie są wersjonowane w repozytorium (dostarczane są przez zewnętrzne API).
+
+Należy skopiować zmienne środowiskowe do `.env`
+
+```bash
+cp .env.example .env
+```
+
+`.env.example`:
+```bash
+TOMTOM_API_KEY=your_real_key_here
+TOMTOM_MAPPING_PATH=/app/data/processed/tomtom_edge_mapping.parquet
+TOMTOM_POLL_INTERVAL_SECONDS=300
+TOMTOM_RUN_ONCE=0
+TOMTOM_MAX_CELLS_PER_POLL=50
+```
+
+Ustawić należy włazny klucz API ze strony `my.tomtom.com`.
+
+
+Wygenerować mapping krawędzi -> komórki (wymagane):
+
+```bash
+docker compose exec opennavigation python src/processing/tomtom_edge_mapping.py
+```
+
+Plik wynikowy:
+
+```text
+data/processed/tomtom_edge_mapping.parquet
+```
+
+Uruchomić loader TomTom (jednorazowo, test):
+
+```bash
+docker compose exec opennavigation sh -c 'export TOMTOM_RUN_ONCE=1; python src/ingestion/tomtom_traffic_loader.py'
+```
+
+Loader publikuje znormalizowane rekordy do topicu:
+
+```text
+warszawa-raw-traffic
+```
+
+Uruchomić transformację Spark, aby przetworzyć wiadomości i zapisać Parquet:
+
+```bash
+docker compose exec opennavigation spark-submit \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
+  src/processing/traffic_transformations.py
+```
+
+Wynik transformacji:
+
+```text
+data/processed/traffic_measurements/
+```
+
+Wykonać agregację (używa tej samej procedury, co agregacja ZDM):
+
+```bash
+docker compose exec opennavigation python src/analysis/zdm_traffic_aggregation.py
+```
+
+Wynik:
+
+```text
+data/processed/zdm_traffic_by_road.csv
+```
+
 
 ## Analiza OSM
 

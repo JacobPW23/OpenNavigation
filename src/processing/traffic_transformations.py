@@ -74,6 +74,7 @@ raw_stream = (
     .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS)
     .option("subscribe", RAW_TOPIC)
     .option("startingOffsets", "earliest")
+    .option("failOnDataLoss", "false")
     .load()
 )
 
