@@ -28,7 +28,7 @@ from routing_model import (
     get_best_edge_data,
     load_speed_factors,
     load_traffic_factors,
-    load_weather_factor,
+    load_weather_context,
     summarize_route,
 )
 
@@ -286,8 +286,10 @@ def build_weighted_graph(
     refresh_graph: bool = False,
     departure_time: pd.Timestamp | None = None,
     city_delay_factor: float = CITY_DELAY_FACTOR,
+    intersection_delay_s: float = INTERSECTION_DELAY_S,
 ):
-    weather_factor = load_weather_factor()
+    weather = load_weather_context(departure_time)
+    weather_factor = float(weather["factor"])
     traffic_map = load_traffic_factors(departure_time)
     speed_map = load_speed_factors()
 
@@ -304,7 +306,9 @@ def build_weighted_graph(
         traffic_map,
         speed_map,
         city_delay_factor=city_delay_factor,
+        intersection_delay_s=intersection_delay_s,
     )
+    graph.graph["weather_context"] = weather
     return graph
 
 
@@ -331,7 +335,7 @@ def calculate_route_variants(
     for variant_name, weight in variants:
         route_nodes = nx.shortest_path(graph, origin_node, destination_node, weight=weight)
         summary, edges = summarize_route(
-            G=graph,
+            graph=graph,
             route_nodes=route_nodes,
             route_name=route_name,
             variant=variant_name,
@@ -627,7 +631,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--google-api-key",
         default=os.getenv("GOOGLE_MAPS_API_KEY"),
         help="Klucz Google Routes API. Domyślnie z GOOGLE_MAPS_API_KEY.",
-    )
+    )   
     parser.add_argument(
         "--skip-google",
         action="store_true",
@@ -655,6 +659,7 @@ def main() -> None:
         refresh_graph=args.refresh_graph,
         departure_time=args.departure_time,
         city_delay_factor=args.city_delay_factor,
+        intersection_delay_s=args.intersection_delay_s,
     )
     summaries, edge_rows, route_nodes_by_variant = calculate_route_variants(
         graph=graph,

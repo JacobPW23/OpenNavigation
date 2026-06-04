@@ -89,6 +89,7 @@ def route_payload(
     return {
         "summaries": summaries,
         "routes": routes,
+        "weather": graph.graph.get("weather_context"),
     }
 
 
@@ -314,6 +315,31 @@ def page_html() -> str:
 
     clearButton.addEventListener("click", clearAll);
 
+    function formatValue(value, suffix = "") {
+      if (value === null || value === undefined || Number.isNaN(value)) {
+        return "brak";
+      }
+      if (typeof value === "number") {
+        return `${Math.round(value * 10) / 10}${suffix}`;
+      }
+      return `${value}${suffix}`;
+    }
+
+    function weatherHtml(weather) {
+      if (!weather || !weather.available) {
+        return `<div>Brak danych pogodowych, użyto factor: ${weather ? weather.factor : 1}</div>`;
+      }
+
+      return `
+        <div>Factor: ${weather.factor} (${weather.match_type})</div>
+        <div>Czas danych: ${weather.matched_time || "średnia dla godziny"}</div>
+        <div>Temperatura: ${formatValue(weather.temperature_2m, " °C")}</div>
+        <div>Opad: ${formatValue(weather.precipitation_mm, " mm")}</div>
+        <div>Śnieg: ${formatValue(weather.snowfall_cm, " cm")}</div>
+        <div>Wiatr: ${formatValue(weather.wind_speed_10m_kmh, " km/h")}</div>
+      `;
+    }
+
     function buildRouteParams() {
       const params = new URLSearchParams({
         origin: originInput.value,
@@ -374,6 +400,11 @@ def page_html() -> str:
           `).join("")}
           <div style="border-top:1px solid #e5e7eb; margin-top:8px; padding-top:8px;">
             <div><strong>Godzina APR</strong>: ${data.departure_hour === null ? "brak" : `${data.departure_hour}:00`}</div>
+            <div><strong>Typ dnia APR</strong>: ${data.departure_day_type || "brak"}</div>
+          </div>
+          <div style="border-top:1px solid #e5e7eb; margin-top:8px; padding-top:8px;">
+            <div><strong>Pogoda</strong></div>
+            ${weatherHtml(data.weather)}
           </div>
           <div style="border-top:1px solid #e5e7eb; margin-top:8px; padding-top:8px;">
             <div><strong>Google Maps</strong></div>
@@ -434,6 +465,9 @@ class RouteHandler(BaseHTTPRequestHandler):
             departure_values = params.get("departure_time", [None])
             departure_time = parse_departure_time(departure_values[0])
             departure_hour = int(departure_time.hour) if departure_time is not None else None
+            departure_day_type = None
+            if departure_time is not None and str(departure_time.date()) != "2000-01-01":
+                departure_day_type = "weekend" if departure_time.dayofweek >= 5 else "dzień roboczy"
             graph_dist_m = graph_radius_m(
                 origin=origin,
                 destination=destination,
@@ -448,6 +482,7 @@ class RouteHandler(BaseHTTPRequestHandler):
                 refresh_graph=self.server.refresh_graph,
                 departure_time=departure_time,
                 city_delay_factor=self.server.city_delay_factor,
+                intersection_delay_s=self.server.intersection_delay_s,
             )
             self.server.refresh_graph = False
 
@@ -493,6 +528,7 @@ class RouteHandler(BaseHTTPRequestHandler):
             payload = route_payload(graph, route_nodes_by_variant, summaries)
             payload["google"] = google_comparison
             payload["departure_hour"] = departure_hour
+            payload["departure_day_type"] = departure_day_type
             payload["colors"] = {
                 "najkrótsza dystansowo": "#2563eb",
                 "najszybsza bazowo": "#16a34a",

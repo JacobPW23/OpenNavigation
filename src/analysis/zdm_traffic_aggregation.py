@@ -22,6 +22,15 @@ def normalize_road_name(value):
     return text
 
 
+def normalize_direction(value):
+    if pd.isna(value):
+        return None
+
+    text = str(value).strip().lower()
+    text = re.sub(r"\s+", " ", text)
+    return text or None
+
+
 def main():
     if not INPUT_PATH.exists():
         raise FileNotFoundError(f"Nie znaleziono danych APR: {INPUT_PATH}")
@@ -34,6 +43,12 @@ def main():
     df["road_key"] = df["road_name"].apply(normalize_road_name)
     df["measurement_time"] = pd.to_datetime(df["measurement_time"], errors="coerce")
     df["measurement_hour"] = df["measurement_time"].dt.hour
+    df["measurement_weekday"] = df["measurement_time"].dt.dayofweek
+    df["is_weekend"] = df["measurement_weekday"] >= 5
+
+    if "direction" not in df.columns:
+        df = df.assign(direction=None)
+    df["direction_key"] = df["direction"].apply(normalize_direction)
 
     grouped_rows = []
 
@@ -65,13 +80,17 @@ def main():
 
     hourly_rows = []
 
-    hourly_group_columns = ["road_key", "measurement_hour", "direction"]
+    hourly_group_columns = [
+        "road_key",
+        "measurement_hour",
+        "measurement_weekday",
+        "is_weekend",
+        "direction_key",
+    ]
     hourly_df = df.dropna(subset=["road_key", "measurement_hour"])
-    if "direction" not in hourly_df.columns:
-        hourly_df = hourly_df.assign(direction=None)
 
     for group_key, group in hourly_df.groupby(hourly_group_columns, dropna=False):
-        road_key, measurement_hour, direction = group_key
+        road_key, measurement_hour, measurement_weekday, is_weekend, direction_key = group_key
         latest = group.sort_values("measurement_time").iloc[-1]
         vc_max = group["vehicle_count"].max()
         vc_mean = group["vehicle_count"].mean()
@@ -84,7 +103,10 @@ def main():
             "road_key": road_key,
             "road_name": latest["road_name"],
             "measurement_hour": int(measurement_hour),
-            "direction": direction,
+            "measurement_weekday": int(measurement_weekday),
+            "is_weekend": bool(is_weekend),
+            "direction": latest.get("direction"),
+            "direction_key": direction_key,
             "measurements_count": len(group),
             "stations_count": group["station_id"].nunique(),
             "date_min": group["measurement_time"].min(),
@@ -97,10 +119,12 @@ def main():
             "source_latest": latest.get("source"),
         })
 
-    hourly_result = pd.DataFrame(hourly_rows).sort_values(
-        ["road_name", "measurement_hour", "direction"],
-        na_position="last",
-    )
+    hourly_result = pd.DataFrame(hourly_rows)
+    if not hourly_result.empty:
+        hourly_result = hourly_result.sort_values(
+            ["road_name", "measurement_weekday", "measurement_hour", "direction_key"],
+            na_position="last",
+        )
 
     OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(OUTPUT_PATH, index=False)

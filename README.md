@@ -181,8 +181,8 @@ Plik `routing_graph.graphml` nie musi być commitowany. Jeśli już istnieje,
 aplikacja go wczyta. Jeśli go nie ma, aplikacja spróbuje pobrać graf przy
 pierwszym zapytaniu o trasę, co trwa dłużej i wymaga dostępu do sieci.
 
-Opcjonalnie, jeśli mają działać godzinowe współczynniki APR dla pola `Odjazd`,
-można przygotować plik:
+Opcjonalnie, jeśli mają działać współczynniki APR zależne od godziny,
+dnia tygodnia/weekendu i kierunku, można przygotować plik:
 
 ```text
 data/processed/zdm_traffic_by_road_hour_direction.csv
@@ -194,8 +194,41 @@ Tworzy go agregacja danych ruchu:
 docker compose exec opennavigation python src/analysis/zdm_traffic_aggregation.py
 ```
 
-Jeśli pliku godzinowego nie ma, aplikacja użyje zwykłej agregacji
+Jeśli tego pliku nie ma, aplikacja użyje zwykłej agregacji
 `zdm_traffic_by_road.csv`.
+
+Pogoda jest czytana z:
+
+```text
+data/processed/weather_observations
+```
+
+Ten katalog tworzy przetwarzanie danych z topicu `warszawa-raw-weather`.
+Loader `src/ingestion/weather_loader.py` pobiera godzinowe dane Open-Meteo
+dla Warszawy. Domyślnie pobiera 30 dni wstecz i 16 dni prognozy, co można
+zmienić zmiennymi `WEATHER_PAST_DAYS` i `WEATHER_FORECAST_DAYS`.
+`src/processing/weather_transformations.py` zapisuje m.in.
+temperaturę, opad, śnieg, wiatr, widoczność, kod pogody i `weather_factor`.
+Przy zapytaniu o trasę aplikacja dobiera rekord najbliższy wybranej dacie
+i godzinie; jeśli nie ma bliskiego rekordu, używa średniej dla tej samej
+godziny.
+
+Odświeżenie danych pogodowych:
+
+```bash
+docker compose exec opennavigation python src/ingestion/weather_loader.py
+docker compose exec opennavigation spark-submit \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
+  src/processing/weather_transformations.py
+```
+
+Jeśli loader zgłasza `Connection refused` dla `localhost:9092`, broker Kafka
+nie działa w kontenerze. Uruchom lub zrestartuj środowisko:
+
+```bash
+docker compose up -d
+docker compose exec opennavigation bash scripts/kafka_status.sh
+```
 
 Uruchomienie aplikacji:
 
@@ -312,7 +345,7 @@ Przykład interpretacji:
 Trasa najkrótsza może być krótsza dystansowo, ale prowadzić przez odcinki o większym natężeniu ruchu lub niższej średniej prędkości. Trasa skorygowana może być dłuższa, ale mieć niższy koszt po uwzględnieniu danych ZDM.
 ```
 
-Czasy przejazdu należy traktować jako **koszt porównawczy tras**, a nie dokładną predykcję czasu znaną z systemów komercyjnych. Model nie uwzględnia wszystkich czynników, takich jak sygnalizacja świetlna, kolejki na skrzyżowaniach, manewry skrętu czy aktualny ruch live.
+Czasy przejazdu należy traktować jako **koszt porównawczy tras**, a nie dokładną predykcję czasu znaną z systemów komercyjnych. Model uwzględnia uproszczoną karę za skrzyżowania i węzły z sygnalizacją, ale nadal nie modeluje kolejek na skrzyżowaniach, manewrów skrętu ani aktualnego ruchu live.
 
 ## Odtworzenie danych prędkości ZDM od zera
 
