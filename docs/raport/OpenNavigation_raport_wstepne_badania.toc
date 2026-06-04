@@ -20,4 +20,4 @@
 \contentsline {subsection}{\numberline {4.3}Działająca aplikacji}{14}{subsection.4.3}%
 \contentsline {subsection}{\numberline {4.4}Wnioski}{15}{subsection.4.4}%
 \contentsline {section}{\numberline {5}Dalsze kierunki badania}{15}{section.5}%
-\contentsline {section}{\numberline {6}Podsumowanie}{15}{section.6}%
+\contentsline {section}{\numberline {6}Podsumowanie}{16}{section.6}%
