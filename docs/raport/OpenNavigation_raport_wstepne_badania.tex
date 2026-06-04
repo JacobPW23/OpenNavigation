@@ -419,26 +419,36 @@ razie, wyznaczana jest średnia arytmetyczna.
 
 \newpage
 
-Wykorzystując bibliotekę \textbf{OSMnx}, system tworzy strukturę sieci drogowej Warszawy. Dla danego obszaru miasta pobierany jest graf drogowy o typie
-\emph{network\_type = 'drive'}\footnote{Typy grafów są jednoznaczne z przeznaczeniem danej drogi, tj. ulica, trasa rowerowa, chodnik etc. \\ Listę dostępnych 
-typów można znaleźć w dokumentacji OSMnx: \url{https://osmnx.readthedocs.io/en/stable/user-reference.html\#osmnx.graph.graph_from_address}},
-który odpowiada ulicom przeznaczonym dla pojazdów. Dla tych ulic, bazowe prędkości/czasu przejazdu dla krawędzi są wyznaczane automatycznie, 
-po czym są wzbogacane o następujące atrybuty:
+
+Wykorzystując bibliotekę \textbf{OSMnx}, system tworzy strukturę sieci drogowej Warszawy na podstawie danych \textbf{OpenStreetMap}. Pobierany jest graf drogowy typu \texttt{network\_type='drive'} - obejmuje on te drogi, które przeznaczone są dla ruchu samochodowego. Wierzchołki grafi odpowiadają skrzyżowaniom / punktom końcowym odcinków dróg, podczas gdy krawędzie to rzeczywiste fragmenty ulic.\\
+
+Pobrany graf zawiera podstawowe atrybuty udostępniane przez OpenStreetMap, takie jak geometria odcinka, długość, typ drogi, nazwa ulicy, informacja o jednokierunkowości, liczba pasów oraz ograniczenie prędkości, jeżeli są dostępne w danych źródłowych. Na podstawie tych informacji OSMnx wyznacza bazowe parametry przejazdu dla krawędzi, w szczególności długość odcinka oraz szacowany czas przejazdu. Parametry te stanowią punkt odniesienia dla dalszych etapów analizy.\\
+
+\textbf{OpenStreetMap} udostępnia atrybuty takie jak:
 \begin{itemize}
-    \item \textbf{traffic\_factor} - korekta kosztu przejazdu na podstawie ZDM APR - danych o natężeniu ruchu;
-    \item \textbf{speed\_factor} - korekta na podstawie prędkości ruchu z raportów ZDM;
-    \item \textbf{weather\_factor} - korekta na podstawie danych o pogodzie;
-    \item \textbf{traffic\_speed\_factor} - ostateczna korekta wynikająca z danych ruchu i prędkości - jest ona wyznaczana jako maksimum z wartości \textbf{traffic\_factor} i \textbf{speed\_factor};
-    \item \textbf{cost\_time\_s} - końcowa waga krawędzi w grafie, będąca wartością czasu w sekundach, uwzględniająca bazowy czas przejazdu i dostępne korekty.
+    \item \texttt{length} - dł. odcinka w metrach
+    \item \texttt{highway} - typ drogi (np. primary, secondary)
+    \item \texttt{lanes} - liczba pasów ruchu
+    \item \texttt{oneway} - informacja o tym czy droga jest jednokierunkowa
+    \item \texttt{maxspeed} - ograniczenie prędkości (jeśli jest dostępne)
 \end{itemize}
 
-Dodatkową, istotną operacją wykonywaną podczas transformacji danych jest normalizacja nazwy ulic. 
-Dane ZDM są dopasywane do poszczególnych krawędzi grafu względem nazwy ulic, a OpenStreetMap oraz ZDM często posiadają różne 
-formy zapisu konkretnych nazw ulic, przykładowo: Al. lub Aleje, Ul. lub Ulica, \dots Transformator danych stosuje uproszczone, ujednolicone 
-nazwy ulic - w celu osiągnięcia tego efektu usuwane są wybrane skróty.
+Bazowe parametry przejazdu dla danej krawędzi są wyznacane na podstawie powyższych informacji. Głównie chodzi tutaj o długość odcinka i szacowany czas przejazdu. Od tego punktu, krawędzie grafu są gotowe do dalszego wzbogacania o dodatkowe atrybuty, które pochodzą z pozostałych źródeł danych.\\
 
-Na etapie transformacji normalizowane są też nazwy ulic, bowiem ZDM oraz OpenStreetMap mogą mieć różne formy zapisu nazw konkretnych ulic, np. Al. i Aleje. Potok stosuje uproszczone ujednolicanie nazw i usuwanie wybranych skrótów. Jest to istotne, ponieważ dane ZDM są głównie dopasowywane do krawędzi po nazwach ulic, co na późniejszym etapie zostanie zastąpione dopasowniem przestrzennym.\\
+Krawędzie grafu są wzbogacane o dodatkowe atrybuty:
+\begin{itemize}
+\item \texttt{traffic\_factor} - korekta kosztu na podstawie danych ZDM APR o natężeniu ruchu
+\item \texttt{speed\_factor} - korekta kosztu na podstawie średnich prędkości z raportów ZDM
+\item \texttt{weather\_factor} - korekta kosztu uwzględniająca warunki pogodowe
+\item \texttt{traffic\_speed\_factor} - łączna korekta wynikająca z danych o natężeniu ruchu i średnich prędkościach - wyznacza się ją jako maks. z wartości \texttt{traffic\_factor} oraz \texttt{speed\_factor}
+\item \texttt{cost\_time\_s} - końcowa waga krawędzi wyrażona w sekundach, w tym miejscu wszystkie korekty są już uwzględnione
+\end{itemize}
 
+Istotne jest normalizowanie nazw ulic, gdyż dane z ZDM są dostosowane do krawędzi grafu właśnie po nazwach. OpenStreetMap oraz ZDM mogą używać innych wariantów zapisu nazw jednakowych ulic, np. \textit{Al.} oraz \textit{Aleje} albo \textit{ul.} oraz \textit{Ulica}. Transformator danych ujednolica nazwy, m. in. zmieniając wielkość liter czy sprowadzając nazwy do wspólnej postaci.\\
+
+Tak przygotowany graf drogowy jest potem wykorzystywany w analizie tras. Algorytm może wyznaczać i porównywać różne warianty przejazdu: trasę najkrótszą dystansowo, trasę najszybszą wg bazowego czasu przejazdu i trasę skorygowaną o dane dotyczące ruchu i warunków pogodowych.\\
+
+\textbf{OpenStreetMap} pełni zatem rolę fundamentu, na którym budowany jest model kosztu przejazdu.
 
 \subsubsection{Zapis danych}
 
@@ -562,18 +572,12 @@ mogą zostać pobrane według potoku danych.
 Skrypty wykonujące analizę optymalnej trasy na podstawie danych znajdują się pod następującymi ścieżkami:
 \begin{itemize}
 \item \verb|/app/src/analysis/route_initial_analysis.py|
-\item \verb|/app/src/analysis/osm_initial_analysis.py|
+\item \verb|/app/src/analysis/route_web.py|
 \end{itemize}
 
-\Huge
 
-TODO - opis pozostałych skryptów
 
-\normalsize
-
-W tym raporcie opisane zostanie wykorzytanie pierwszego skryptu. Pozostałe zostaną opisane w ramach raportu końcowego.
-
-Kluczowym punktem dla analizy jest zdefiniowana w tym pliku stała \textbf{ROUTES}, w której określone są punkty 
+Do analizy wstępnej wykorzystywana jest stała \textbf{ROUTES}, w której określone są punkty 
 początkowe i końcowe, dla których ma zostać znaleziona optymalna trasa.
 Poniżej zamieszczono przykładową konfigurację zmiennej, domyślnie znajdującą się w skrypcie w języku Python:
 
@@ -598,6 +602,22 @@ src/analysis/route_initial_analysis.py
     \end{verbatim}
 \end{tcolorbox} 
 
+
+Do analizy z wykorzystaniem aplikacji webowej, należy uruchomić skrypt komendą:
+
+\begin{tcolorbox}
+\begin{verbatim}
+docker compose exec opennavigation python \
+src/analysis/route_web.py
+\end{verbatim}
+\end{tcolorbox}
+Aplikacja działa na porcie 8050, więc po uruchomieniu można ją otworzyć w przeglądarce pod adresem \url{http://localhost:8050}.
+W aplikacji jest możliwość wprowadzenia współrzędnych punktu początkowego i końcowego, a następnie wygenerowanie trasy.
+
+\begin{figure}[H]
+    \includegraphics[width=\textwidth]{png/route_web_example.png}
+    \caption{Aplikacja webowa do analizy tras.}
+\end{figure}
 
 \subsection{Dane wyjściowe}
 Wyniki wykonania skryptu znajdą się w katalogu \verb|/app/data/results/route_initial_analysis/|. Dla analizy danych 
@@ -695,9 +715,11 @@ W tabeli podano wartości w formacie \textit{min / km}.
     Wariant skorygowany minimalnie poprawił wynik względem bazowego, jednak jest niemal gorszy od wyniku z Google Maps. 
 \end{itemize}
 
-\subsection{Działająca aplikacji}
-Poniżej zamieszczono zrzuty ekranu z działającej aplikacji. Wyniki naszej analizy zestawiono
-z propozycjami tras od Map Google.
+\subsection{Rozszerzenie analizy - aplikacja webowa}
+Jako rozszerzenie analizy, przygotowana została aplikacja webowa, która pozwala na wprowadzenie dowolnych punktów startu i celu, a następnie wygenerowanie trasy.
+Aplikacja jest dostępna pod adresem \url{http://localhost:8050} po uruchomieniu skryptu \verb|route_web.py|.\\
+Przetestowane zostały różne warianty tras, w tym trasy krótkie, długie, bardzo krótkie oraz trasy w różnych porach dnia, aby ocenić działanie algorytmu w różnych scenariuszach
+w porównaniu z Google Maps.
 
 \begin{figure}[H]
     \begin{subfigure}[t]{0.45\textwidth}
@@ -735,7 +757,7 @@ z propozycjami tras od Map Google.
         \includegraphics[width=\textwidth]{png/ultra_short_variant_google_maps.png}
         \subcaption{Wyniki Google Maps}
     \end{subfigure}
-    \caption{Przykład trasy ultrakrótkiej}
+    \caption{Przykład trasy bardzo krótkiej}
 \end{figure}
 
 \begin{figure}[H]
@@ -745,10 +767,36 @@ z propozycjami tras od Map Google.
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.45\textwidth}
-        \includegraphics[width=\textwidth]{png/midday.png}
+        \includegraphics[width=\textwidth]{png/morning_google.png}
         \subcaption{Wyniki Google Maps}
     \end{subfigure}
-    \caption{Porównanie porannych godzin szczytu z ruchem w południe na krótkim odcinku}
+    \caption{Przykład trasy w godzinach porannych}
+\end{figure}
+
+\begin{figure}[H]
+    \begin{subfigure}[t]{0.45\textwidth}
+        \includegraphics[width=\textwidth]{png/midday.png}
+        \subcaption{Wyniki aplikacji OpenNavigation}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.45\textwidth}
+        \includegraphics[width=\textwidth]{png/midday_google.png}
+        \subcaption{Wyniki Google Maps}
+    \end{subfigure}
+    \caption{Przykład trasy w godzinach południowych}
+\end{figure}
+
+\begin{figure}[H]
+    \begin{subfigure}[t]{0.45\textwidth}
+        \includegraphics[width=\textwidth]{png/midday2.png}
+        \subcaption{Wyniki aplikacji OpenNavigation}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.45\textwidth}
+        \includegraphics[width=\textwidth]{png/midday2_google.png}
+        \subcaption{Wyniki Google Maps}
+    \end{subfigure}
+    \caption{Przykład trasy w godzinach popołudniowych}
 \end{figure}
 
 \begin{figure}[H]
@@ -758,35 +806,67 @@ z propozycjami tras od Map Google.
     \end{subfigure}
     \hfill
     \begin{subfigure}[t]{0.45\textwidth}
-        \includegraphics[width=\textwidth]{png/midday2.png}
+        \includegraphics[width=\textwidth]{png/afternoon_google.png}
         \subcaption{Wyniki Google Maps}
     \end{subfigure}
-    \caption{Porównanie popołudniowych godzin szczytu z ruchem w południe na dłuższym odcinku}
+    \caption{Przykład trasy w godzinach wieczornych}
 \end{figure}
 
-\subsection{Wnioski}
-Na podstawie porównań można stwierdzić, że algorytm konsekwentnie wyznacza trzy warianty tras
-i poprawnie różnicuje je według przyjętych miar (dystans, czas bazowy, czas skorygowany).
-Korekta kosztu na podstawie danych ZDM i pogody potrafi zmienić wybór trasy i obniżyć czas
-przejazdu względem wariantu bazowego, co potwierdza sens wykorzystania tych źródeł w celu analizy. Różnice względem Google Maps
-wskazują na potrzebę dostosowania współczynników oraz uzupełnienia ograniczeń w grafie OSM
-(np. zakazy skrętu, zamknięcia). \\
-Algorytm skorygowany radzi sobie lepiej niż bazowy oraz najkrótszy, jednak nadal nie obsługuje 
-ruchu w czasie rzeczywistym, co oznacza że nie powinien być używany do omijania aktualnych zagęszczeń i korków na trasach, 
-a raczej do planowania trasy z uwzględnieniem danych historycznych i kontekstowych. Warto zauważyć, że korekcja trasy
-w aplikacji w przypadku tras krótkich była na korzyść w stosunku do danych z Google Maps, natomiast
-w przypadku tras długich było odwrotnie.
+\begin{table}[H]
+    \centering
+    \small
+    \caption{Zestawienie wyników odczytanych ze zrzutów ekranu aplikacji i Google Maps}
+    \label{tab:app-screens-results}
+    \begin{tabular}{|p{4.6cm}|p{4.2cm}|p{4.2cm}|}
+        \hline
+        \textbf{Przykład trasy} & \textbf{OpenNavigation [km / min]} & \textbf{Google Maps [km / min]} \\ \hline
+        Krótka trasa & 5.38 / 12.5 & 5.2 / 10 \\ \hline
+        Długa trasa & 18.56 / 30.2 & 20.5 / 21 \\ \hline
+        Trasa bardzo krótka & 0.33 / 1.66 & 0.35 / 1 \\ \hline
+        Trasa w godzinach porannych & 3.04 / 5.4 & 2.6 / 3 \\ \hline
+        Trasa w godzinach południowych & 3.04 / 5.05 & 2.6 / 3 \\ \hline
+        Trasa w godzinach popołudniowych & 5.92 / 11.79 & 5.7 / 7--16 \\ \hline
+        Trasa w godzinach wieczornych & 5.92 / 11.79 & 5.7 / 7--14 \\ \hline
+    \end{tabular}
+\end{table}
 
+\begin{itemize}
+    \item Dla trasy krótkiej wyniki z OpenNavigation są czasowo wyższe niż w Google Maps, jest to spowodowane wyborem gorszej trasy według danych Google oraz lekkiego zawyżania czasu dla krótkich tras.
+    \item Dla trasy długiej, OpenNavigation wyznaczył trasę krótrzą dystansowo, ale czasowo gorszą niż Google Maps. Algorytm znalazł trase, która jest krótsza, najprawdopodobniej przez problem z brakiem zakazów skrętu w algorytmie. Zawyżył on też znacząco czas przejazdu, co sugeruje, że OpenNavigation zawyża czas dla tras długich.
+    \item Dla trasy bardzo krótkiej, OpenNavigation wyznaczył trasę o podobnym dystansie, ale czasowo gorszą niż Google Maps. Algorytm zawyża czas dla tras bardzo krótkich.
+    \item Dla trasy w godzinach porannych, OpenNavigation wyznaczył trasę o lekko większym dystansie, ale czasowo gorszą niż Google Maps. Jest to spowodowane przez objazd, który wprowadził algorytm na początku trasy.
+    \item Dla trasy w godzinach południowych, OpenNavigation wyznaczył trasę o lekko większym dystansie. Jest to tutaj także spowodowane przez objazd, który wprowadził algorytm na początku trasy. Czasowo OpenNavigation zawyża znacząco czas przejazdu.
+    \item Dla trasy w godzinach popołudniowych, OpenNavigation wyznacza dłuższą trasę o ten sam objazd. Czasowo, mieści się w przedziale podanym przez Google.
+    \item Dla trasy w godzinach wieczornych, OpenNavigation wyznacza taką samą trasę, co w godzinach popołudniowych. Czasowo również mieści się w przedziale podanym przez Google Maps.
+\end{itemize}
+\subsection{Wnioski}
+
+Na podstawie wszystkich przeprowadzonych analiz można zdecydowanie stwierdzić, że system poprawnie realizuje główny zamysł projektu - wyznaczanie tras przejazdu bazując na grafie drogowym OpenStreetMap wzbogaconym o inne, dodatkowe dane dotyczące takich informacji jak ruch, prędkości oraz warunki pogodowe. Generowane są warianty tras: najkrótszy dystansowo, najszybszy według bazowego czasu przejazdu oraz skorygowany z wykorzystaniem dodatkowych współczynników kosztu. Zastosowany model grafu i funkcje kosztu działają zgodnie z założeniami - implementacja jest poprawna.\\
+
+Porównanie wyników z Google Maps jest jedynie orientacyjne, jest to bowiem zamknięty system korzystający z własnych źródeł danych i algorytmów, ale wyniki te mogą nadal służyć jako punkt odniesienia do oceny, czy trasy generowane przez OpenNavigation mają realistyczny przebieg. Pomoc map Google pozwoliła ocenić, które trasy są dobrze wyznaczone, a które wymagają dalszej kalibracji.\\
+
+Wyniki wyraźnie pokazują, iż korekta kosztu przejazdu na podstawie danych z ZDM oraz pogody mogą wpływać na wybór trasy / poprawiać wynik względem bazowego, lecz nie dzieje się tak w każdym przypadku. Dla niektórych tras skorygowany wariant generuj zbliżony wynik do wariantu bazowego, a czasami różnice względem map Google są znaczące. Powodem tego jest przede wszystkim ograniczone pokrycie grafu danymi pomiarowymi czy brak całkowitej informacji o faktycznych ograniczeniach drogowych (np. zamknięcia ulic, chwilowe zdarzenia drogowe).\\
+
+Ważnym rezultatem jest także przygotowanie \textbf{aplikacji webowej}, której interfejs umożliwia wybór początkowego i końcowego punktu na mapie, uruchomienie obliczeń oraz wizualizację uzyskanych wyników. Dzięki temu możliwe było przetestowanie systemu w interaktywny i wygodny sposób dla różnych scenariuszy. Zrzuty ekranu w raporcie jednoznacznie potwierdzają, iż aplikacja webowa umożliwia testowanie algorytmu wyznaczania tras.\\
+
+Po przeprowadzeniu analizy aplikacji webowej, okazuje się, że dla krótszych tras system bardzo często generuje takie trasy, które są porównywalne z wynikami z map Google względem zarówno przebiegu, jak i dystansu. Dla tras, które są dłuższe, rozbieżności są większe. Wynika to przede wszystkim z ograniczeń uproszczonego modelu grafu czy niepełnym pokryciem danymi o ruchu. System nadal jest bardzo dobrym prototypem i narzędziem analitycznym.\\
+
+
+Podsumowując, projekt umożliwił zbudowanie działającego prototypu systemu służącego do wyznaczania tras przejazdu na podstawie grafu drogowego \textbf{OpenStreetMap}, który jest wzbogacony o dodatkowe dane dotyczące ruchu, prędkości czy pogody. Do najważniejszych osiągnięć można zaliczyć:
+\begin{itemize}
+    \item Zbudowanie potoku przetwarzania danych (pobranie danych z różnych źródeł, oczyszczenie, transformację, wzbogacenie o dodatkowe atrybuty)
+    \item Utworzenie grafu drogowego Warszawy na podstawie danych OpenStreetMap, wzbogacenie go o współczynniki kosztu
+    \item Przygotowanie skryptów analitycznych do wyznaczania tras, porównywania ich z wynikami map Google
+    \item Stworzenie aplikacji webowej umożliwiającej interaktywną analizę tras dla dowolnie wybranych punktów
+\end{itemize}
 \section{Dalsze kierunki badania}
 W kolejnych etapach powinniśmy skupić się na poprawieniu znajdowania najszybszej trasy oraz
 poprawie szacowania czasu przejazdu. W tym celu należy rozważyć następujące kierunki:
 \begin{itemize}
-    \item \textbf{Kalibracja współczynników} -- zmiana \textit{traffic\_factor} oraz
+    \item \textbf{Dalsza kalibracja współczynników} -- zmiana \textit{traffic\_factor} oraz
     \textit{speed\_factor} aby poprawić trafność wyznaczanych tras.
     \item \textbf{Ograniczenia drogowe} -- uzupełnienie grafu OSM o zakazy skrętu,
     zamknięcia i ograniczenia kierunkowe, aby ograniczyć rozbieżności z rzeczywistymi trasami.
-    \item \textbf{Dane czasu rzeczywistego} -- dodanie często aktualizowanych źródeł
-    (np. zdarzenia drogowe, zagęszczenia ruchu).
     \item \textbf{Walidacja zewnętrzna} -- porównanie wyników z rzeczywistymi czasami przejazdu z łatwo dostępnych źródeł (Google Maps nie daje możliwości łatwego zautomatyzowania tworzenia własnych tras)
 \end{itemize}
 
@@ -805,7 +885,7 @@ potrafią poprawić wynik, choć wciąż występują rozbieżności wynikające 
 oraz uproszczeń w grafie OSM.
 
 Zidentyfikowane ograniczenia wskazują na potrzebę dalszej kalibracji współczynników i
-uzupełnienia ograniczeń drogowych oraz rozbudowy źródeł danych. Zaproponowane kierunki badań
+uzupełnienia ograniczeń drogowych. Zaproponowane kierunki badań
 koncentrują się na poprawie trafności wyznaczania tras i zbliżeniu wyników do rzeczywistych
 czasów przejazdu.
 
