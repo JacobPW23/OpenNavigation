@@ -332,12 +332,13 @@ Przykładowy fragment odpowiedzi (rzeczywisty wynik, ograniczony do pojedynczego
 
 \end{itemize}
 
+\subsubsection{Struktura surowych danych - wykresy}
+
 \begin{figure}[H]
     \includegraphics[width=0.9\textwidth]{png/avg_entropy_by_type.png}
     \caption{Średnia entropia, rozumiana w sensie teorii informacji, dla poszczególnych typów plików źródłowych (nieprzetworzonych)}
 \end{figure}
 
-\subsubsection{Struktura surowych danych - wykresy}
 
 \begin{figure}[H]
     \includegraphics[width=0.9\textwidth]{png/avg_size_by_type.png}
@@ -555,10 +556,10 @@ Wyniki: \textit{warszawa-raw-weather}.
 \subsection{Konfiguracja skryptów analizy}
 
 % do sprawdzenia poprawności
-Po udanym postawieniu kontenera, i sprawdzeniu jego działania za pomocą \verb|docker compose ps|, dane 
+Po udanym utworzeniu kontenera, i sprawdzeniu jego działania za pomocą \verb|docker compose ps|, dane 
 mogą zostać pobrane według potoku danych.
 
-Skrypty wykonujące analizę najoptymalniejszej trasy na podstawie danych znajdują się pod następującymi ścieżkami:
+Skrypty wykonujące analizę optymalnej trasy na podstawie danych znajdują się pod następującymi ścieżkami:
 \begin{itemize}
 \item \verb|/app/src/analysis/route_initial_analysis.py|
 \item \verb|/app/src/analysis/osm_initial_analysis.py|
@@ -606,7 +607,7 @@ istotne są 3 pliki wynikowe:
     \item routes\_comparison.csv - plik csv podsumowujący najważniejsze aspekty determinujące proponowane trasy:
     distance\_km, base\_time\_min, adjusted\_time\_min, traffic\_impacted\_edges, \\
     speed\_impacted\_edges, zdm\_apr\_edges, zdm\_speed\_edges, osmnx\_only\_edges; 
-    \item route\_edges.csv - szczegóły krawędzi najbardziej optymalnej trasy znalezionej przez algorytm, takie jak 
+    \item route\_edges.csv - szczegóły krawędzi optymalnej trasy znalezionej przez algorytm, takie jak 
             traffic\_factor, speed\_factor, traffic\_speed\_factor, measured\_avg\_speed\_kmh, cost\_source.
 \end{enumerate}
 
