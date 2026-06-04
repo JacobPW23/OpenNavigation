@@ -62,6 +62,89 @@ def parse_query_coordinate(params: dict[str, list[str]], name: str) -> tuple[flo
     return parse_coordinate(values[0])
 
 
+def edge_points(graph, u, v, data: dict) -> list[list[float]]:
+    geometry = data.get("geometry")
+    if geometry is not None:
+        return [[lat, lon] for lon, lat in geometry.coords]
+
+    return [
+        [graph.nodes[u]["y"], graph.nodes[u]["x"]],
+        [graph.nodes[v]["y"], graph.nodes[v]["x"]],
+    ]
+
+
+def edge_display_name(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        return "; ".join(str(item) for item in value if item)
+    return str(value)
+
+
+def first_scalar(value):
+    if isinstance(value, list):
+        return value[0] if value else None
+    return value
+
+
+def float_or_none(value) -> float | None:
+    value = first_scalar(value)
+    if value is None:
+        return None
+
+    try:
+        return float(str(value).split()[0])
+    except (TypeError, ValueError):
+        return None
+
+
+def diagnostic_payload(graph, routes: list[dict]) -> dict:
+    graph_edges = []
+    traffic_edges_count = 0
+    speed_edges_count = 0
+    lane_edges_count = 0
+
+    for u, v, _, data in graph.edges(keys=True, data=True):
+        traffic_factor = float(data.get("traffic_factor", 1.0))
+        speed_kph = float_or_none(data.get("speed_kph"))
+        maxspeed = first_scalar(data.get("maxspeed"))
+        lanes = float_or_none(data.get("lanes"))
+
+        has_traffic = data.get("traffic_road_key") is not None
+        has_speed = speed_kph is not None or maxspeed is not None
+        has_lanes = lanes is not None
+
+        if has_traffic:
+            traffic_edges_count += 1
+        if has_speed:
+            speed_edges_count += 1
+        if has_lanes:
+            lane_edges_count += 1
+
+        graph_edges.append({
+            "points": edge_points(graph, u, v, data),
+            "name": edge_display_name(data.get("name")),
+            "highway": edge_display_name(data.get("highway")),
+            "speed_kph": speed_kph,
+            "maxspeed": str(maxspeed) if maxspeed is not None else None,
+            "lanes": lanes,
+            "traffic_road_key": data.get("traffic_road_key"),
+            "traffic_direction_key": data.get("traffic_direction_key"),
+            "traffic_factor": traffic_factor,
+            "cost_source": data.get("cost_source"),
+        })
+
+    return {
+        "graph_edges": graph_edges,
+        "visible_graph_edges": len(graph_edges),
+        "visible_traffic_edges": traffic_edges_count,
+        "visible_speed_edges": speed_edges_count,
+        "visible_lane_edges": lane_edges_count,
+        "total_graph_edges": len(graph.edges),
+        "limited": False,
+    }
+
+
 def route_payload(
     graph,
     route_nodes_by_variant: dict[str, list[int]],
@@ -90,6 +173,7 @@ def route_payload(
         "summaries": summaries,
         "routes": routes,
         "weather": graph.graph.get("weather_context"),
+        "diagnostics": diagnostic_payload(graph, routes),
     }
 
 
@@ -259,6 +343,10 @@ def page_html() -> str:
       attribution: "&copy; OpenStreetMap contributors"
     });
     const blankLayer = L.layerGroup();
+    const graphLayer = L.layerGroup().addTo(map);
+    const trafficLayer = L.layerGroup().addTo(map);
+    const speedLayer = L.layerGroup();
+    const lanesLayer = L.layerGroup();
     const routeLayer = L.layerGroup().addTo(map);
 
     osmLayer.addTo(map);
@@ -268,6 +356,10 @@ def page_html() -> str:
         "Bez tła": blankLayer
       },
       {
+        "Graf dróg": graphLayer,
+        "Ulice z APR": trafficLayer,
+        "Prędkość": speedLayer,
+        "Liczba pasów": lanesLayer,
         "Trasy": routeLayer
       }
     ).addTo(map);
@@ -291,6 +383,10 @@ def page_html() -> str:
     }
 
     function clearRoutes() {
+      graphLayer.clearLayers();
+      trafficLayer.clearLayers();
+      speedLayer.clearLayers();
+      lanesLayer.clearLayers();
       routeLayer.clearLayers();
       summaryEl.innerHTML = "";
     }
@@ -351,6 +447,93 @@ def page_html() -> str:
       return params;
     }
 
+    function drawDiagnostics(diagnostics) {
+      if (!diagnostics) {
+        return;
+      }
+
+      for (const edge of diagnostics.graph_edges || []) {
+        L.polyline(edge.points, {
+          color: "#374151",
+          opacity: 0.35,
+          weight: 1.5
+        }).bindPopup(`
+          <strong>${edge.name || "Krawędź grafu OSM"}</strong><br>
+          typ: ${edge.highway || "brak"}
+        `).addTo(graphLayer);
+      }
+
+      function trafficColor(factor) {
+        if (factor >= 1.5) return "#7f1d1d";
+        if (factor >= 1.35) return "#dc2626";
+        if (factor >= 1.2) return "#f97316";
+        if (factor >= 1.1) return "#facc15";
+        return "#22c55e";
+      }
+
+      function trafficWeight(factor) {
+        return Math.max(4, Math.min(10, 3 + (factor - 1) * 10));
+      }
+
+      function speedColor(speed) {
+        if (!speed) return "#6b7280";
+        if (speed >= 90) return "#7c3aed";
+        if (speed >= 70) return "#2563eb";
+        if (speed >= 50) return "#16a34a";
+        if (speed >= 30) return "#f97316";
+        return "#dc2626";
+      }
+
+      function laneColor(lanes) {
+        if (!lanes) return "#6b7280";
+        if (lanes >= 4) return "#7c3aed";
+        if (lanes >= 3) return "#2563eb";
+        if (lanes >= 2) return "#16a34a";
+        return "#f97316";
+      }
+
+      for (const edge of diagnostics.graph_edges || []) {
+        if (edge.traffic_road_key) {
+          const factor = Number(edge.traffic_factor || 1);
+          L.polyline(edge.points, {
+            color: trafficColor(factor),
+            opacity: 0.9,
+            weight: trafficWeight(factor)
+          }).bindPopup(`
+            <strong>${edge.name || "Ulica z APR"}</strong><br>
+            road_key: ${edge.traffic_road_key || "brak"}<br>
+            kierunek: ${edge.traffic_direction_key || "brak"}<br>
+            traffic_factor: ${factor}<br>
+            źródło: dopasowanie APR do krawędzi OSM
+          `).addTo(trafficLayer);
+        }
+
+        const speed = Number(edge.speed_kph || 0);
+        if (edge.speed_kph !== null || edge.maxspeed !== null) {
+          L.polyline(edge.points, {
+            color: speedColor(speed),
+            opacity: 0.85,
+            weight: 4
+          }).bindPopup(`
+            <strong>${edge.name || "Krawędź z prędkością"}</strong><br>
+            speed_kph: ${edge.speed_kph === null ? "brak" : edge.speed_kph}<br>
+            maxspeed OSM: ${edge.maxspeed || "brak"}
+          `).addTo(speedLayer);
+        }
+
+        if (edge.lanes !== null) {
+          L.polyline(edge.points, {
+            color: laneColor(Number(edge.lanes || 0)),
+            opacity: 0.85,
+            weight: Math.max(3, Math.min(9, Number(edge.lanes) + 2))
+          }).bindPopup(`
+            <strong>${edge.name || "Krawędź z liczbą pasów"}</strong><br>
+            lanes: ${edge.lanes}
+          `).addTo(lanesLayer);
+        }
+      }
+    }
+
     routeButton.addEventListener("click", async () => {
       if (!originInput.value || !destinationInput.value) {
         statusEl.textContent = "Wybierz start i cel.";
@@ -369,6 +552,8 @@ def page_html() -> str:
         if (!response.ok) {
           throw new Error(data.error || "Nie udało się policzyć trasy.");
         }
+
+        drawDiagnostics(data.diagnostics);
 
         const bounds = [];
         for (const route of data.routes) {
@@ -401,6 +586,12 @@ def page_html() -> str:
           <div style="border-top:1px solid #e5e7eb; margin-top:8px; padding-top:8px;">
             <div><strong>Godzina APR</strong>: ${data.departure_hour === null ? "brak" : `${data.departure_hour}:00`}</div>
             <div><strong>Typ dnia APR</strong>: ${data.departure_day_type || "brak"}</div>
+            <div><strong>Graf dróg</strong>: ${data.diagnostics.visible_graph_edges} / ${data.diagnostics.total_graph_edges} krawędzi</div>
+            <div><strong>Ulice z APR</strong>: ${data.diagnostics.visible_traffic_edges} krawędzi</div>
+            <div><strong>Prędkość</strong>: ${data.diagnostics.visible_speed_edges} krawędzi</div>
+            <div><strong>Liczba pasów</strong>: ${data.diagnostics.visible_lane_edges} krawędzi</div>
+            <div>APR: zielony ≈ lekko, żółty/pomarańczowy = większy ruch, czerwony = najwyższy factor.</div>
+            <div>Dane APR są dopasowane do ulic/krawędzi OSM; nie są interpolowane na brakujące ulice.</div>
           </div>
           <div style="border-top:1px solid #e5e7eb; margin-top:8px; padding-top:8px;">
             <div><strong>Pogoda</strong></div>

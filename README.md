@@ -247,6 +247,14 @@ W aplikacji można:
 - kliknąć na mapie punkt startowy i punkt docelowy,
 - wybrać datę i godzinę odjazdu,
 - policzyć trasę przyciskiem `Policz`,
+- włączyć warstwę `Graf dróg`, żeby zobaczyć pełny graf OSMnx użyty
+  do trasowania,
+- włączyć warstwę `Ulice z APR`, żeby zobaczyć ulice, dla których model
+  dopasował dane natężenia ruchu; kolor i grubość odcinka pokazują
+  wartość `traffic_factor`,
+- włączyć warstwę `Prędkość`, żeby zobaczyć prędkości z grafu/OSMnx,
+- włączyć warstwę `Liczba pasów`, żeby zobaczyć atrybut `lanes` z OSM,
+- przełączyć tło mapy na `Bez tła`.
 
 Wyniki ostatniego zapytania są zapisywane w:
 
