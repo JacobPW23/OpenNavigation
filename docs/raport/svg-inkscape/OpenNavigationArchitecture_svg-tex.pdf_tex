@@ -1,0 +1,100 @@
+%% Creator: Inkscape 1.4.3 (0d15f75, 2025-12-25), www.inkscape.org
+%% PDF/EPS/PS + LaTeX output extension by Johan Engelen, 2010
+%% Accompanies image file 'OpenNavigationArchitecture_svg-tex.pdf' (pdf, eps, ps)
+%%
+%% To include the image in your LaTeX document, write
+%%   \input{<filename>.pdf_tex}
+%%  instead of
+%%   \includegraphics{<filename>.pdf}
+%% To scale the image, write
+%%   \def\svgwidth{<desired width>}
+%%   \input{<filename>.pdf_tex}
+%%  instead of
+%%   \includegraphics[width=<desired width>]{<filename>.pdf}
+%%
+%% Images with a different path to the parent latex file can
+%% be accessed with the `import' package (which may need to be
+%% installed) using
+%%   \usepackage{import}
+%% in the preamble, and then including the image with
+%%   \import{<path to file>}{<filename>.pdf_tex}
+%% Alternatively, one can specify
+%%   \graphicspath{{<path to file>/}}
+%% 
+%% For more information, please see info/svg-inkscape on CTAN:
+%%   http://tug.ctan.org/tex-archive/info/svg-inkscape
+%%
+\begingroup%
+  \makeatletter%
+  \providecommand\color[2][]{%
+    \errmessage{(Inkscape) Color is used for the text in Inkscape, but the package 'color.sty' is not loaded}%
+    \renewcommand\color[2][]{}%
+  }%
+  \providecommand\transparent[1]{%
+    \errmessage{(Inkscape) Transparency is used (non-zero) for the text in Inkscape, but the package 'transparent.sty' is not loaded}%
+    \renewcommand\transparent[1]{}%
+  }%
+  \providecommand\rotatebox[2]{#2}%
+  \newcommand*\fsize{\dimexpr\f@size pt\relax}%
+  \newcommand*\lineheight[1]{\fontsize{\fsize}{#1\fsize}\selectfont}%
+  \ifx\svgwidth\undefined%
+    \setlength{\unitlength}{709.5bp}%
+    \ifx\svgscale\undefined%
+      \relax%
+    \else%
+      \setlength{\unitlength}{\unitlength * \real{\svgscale}}%
+    \fi%
+  \else%
+    \setlength{\unitlength}{\svgwidth}%
+  \fi%
+  \global\let\svgwidth\undefined%
+  \global\let\svgscale\undefined%
+  \makeatother%
+  \begin{picture}(1,0.30708245)%
+    \lineheight{1}%
+    \setlength\tabcolsep{0pt}%
+    \put(0,0){\includegraphics[width=\unitlength,page=1]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.06871036,0.21353066){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Źródła danych\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=2]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.06871036,0.18181818){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Overpass api\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=3]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.26215645,0.21353066){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Kafka\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=4]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.26215645,0.18181818){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Temat: warszawa-raw-str...\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=5]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.26215645,0.13953488){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Temat: warszawa-raw-tra...\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=6]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.06871036,0.13953488){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Dane ZDM\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=7]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.06871036,0.09513742){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Dane pogodowe...\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=8]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.06871036,0.05285412){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Raporty ZDM...\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=9]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.26215645,0.09725159){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Temat: warszawa-raw-wea...\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=10]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.49154334,0.21353066){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Apache Spa...\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=11]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.91437632,0.21247357){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Analizy\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=12]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.91437632,0.1807611){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Budowa grafu\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=13]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.91437632,0.13953488){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Szukanie ścieżek\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=14]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.91437632,0.09725159){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Agregacje ZDM\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=15]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.91437632,0.05496829){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Wyniki (CSV/MD)\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=16]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.71353066,0.21353066){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Baza danych\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=17]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.49154334,0.08139535){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Przetwarzanie do...\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=18]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.71353066,0.1448203){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Zapis struktur w baz...\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=19]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.71353066,0.08668076){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}/app/data/processed\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=20]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.71353066,0.04439746){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}/app/data/results\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=21]{OpenNavigationArchitecture_svg-tex.pdf}}%
+    \put(0.49154334,0.15539112){\makebox(0,0)[t]{\lineheight{1.25}\smash{\begin{tabular}[t]{c}Oczyszczanie i u...\end{tabular}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=22]{OpenNavigationArchitecture_svg-tex.pdf}}%
+  \end{picture}%
+\endgroup%
