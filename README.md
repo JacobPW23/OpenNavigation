@@ -149,6 +149,119 @@ Podgląd wyników:
 cat data/results/route_initial_analysis/routes_comparison.csv
 ```
 
+## Aplikacja graficzna do wyznaczania trasy
+
+Aplikacja webowa pozwala wybrać punkt startowy i końcowy na mapie, a następnie
+porównać warianty trasy liczone na grafie OSMnx.
+
+Do działania aplikacji potrzebne są pakiety z obrazu Docker oraz pliki
+zagregowanych danych:
+
+```text
+data/processed/zdm_speed_by_road.csv
+data/processed/zdm_traffic_by_road.csv
+```
+
+Te dwa pliki są wersjonowane w repozytorium. Jeśli ich brakuje, aplikacja nadal
+uruchomi się, ale trasy będą korzystać głównie z bazowych danych OSMnx.
+
+Przed pierwszym użyciem zalecane jest zbudowanie i zapisanie grafu drogowego:
+
+```bash
+docker compose exec opennavigation python src/analysis/build_routing_graph.py
+```
+
+Wynik:
+
+```text
+data/processed/routing_graph.graphml
+```
+
+Plik `routing_graph.graphml` nie musi być commitowany. Jeśli już istnieje,
+aplikacja go wczyta. Jeśli go nie ma, aplikacja spróbuje pobrać graf przy
+pierwszym zapytaniu o trasę, co trwa dłużej i wymaga dostępu do sieci.
+
+Opcjonalnie, jeśli mają działać współczynniki APR zależne od godziny,
+dnia tygodnia/weekendu i kierunku, można przygotować plik:
+
+```text
+data/processed/zdm_traffic_by_road_hour_direction.csv
+```
+
+Tworzy go agregacja danych ruchu:
+
+```bash
+docker compose exec opennavigation python src/analysis/zdm_traffic_aggregation.py
+```
+
+Jeśli tego pliku nie ma, aplikacja użyje zwykłej agregacji
+`zdm_traffic_by_road.csv`.
+
+Pogoda jest czytana z:
+
+```text
+data/processed/weather_observations
+```
+
+Ten katalog tworzy przetwarzanie danych z topicu `warszawa-raw-weather`.
+Loader `src/ingestion/weather_loader.py` pobiera godzinowe dane Open-Meteo
+dla Warszawy. Domyślnie pobiera 30 dni wstecz i 16 dni prognozy, co można
+zmienić zmiennymi `WEATHER_PAST_DAYS` i `WEATHER_FORECAST_DAYS`.
+`src/processing/weather_transformations.py` zapisuje m.in.
+temperaturę, opad, śnieg, wiatr, widoczność, kod pogody i `weather_factor`.
+Przy zapytaniu o trasę aplikacja dobiera rekord najbliższy wybranej dacie
+i godzinie; jeśli nie ma bliskiego rekordu, używa średniej dla tej samej
+godziny.
+
+Odświeżenie danych pogodowych:
+
+```bash
+docker compose exec opennavigation python src/ingestion/weather_loader.py
+docker compose exec opennavigation spark-submit \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1 \
+  src/processing/weather_transformations.py
+```
+
+Jeśli loader zgłasza `Connection refused` dla `localhost:9092`, broker Kafka
+nie działa w kontenerze. Uruchom lub zrestartuj środowisko:
+
+```bash
+docker compose up -d
+docker compose exec opennavigation bash scripts/kafka_status.sh
+```
+
+Uruchomienie aplikacji:
+
+```bash
+docker compose exec opennavigation python src/analysis/route_web.py
+```
+
+Następnie otworzyć w przeglądarce:
+
+```text
+http://localhost:8050
+```
+
+W aplikacji można:
+
+- kliknąć na mapie punkt startowy i punkt docelowy,
+- wybrać datę i godzinę odjazdu,
+- policzyć trasę przyciskiem `Policz`,
+- włączyć warstwę `Graf dróg`, żeby zobaczyć pełny graf OSMnx użyty
+  do trasowania,
+- włączyć warstwę `Ulice z APR`, żeby zobaczyć ulice, dla których model
+  dopasował dane natężenia ruchu; kolor i grubość odcinka pokazują
+  wartość `traffic_factor`,
+- włączyć warstwę `Prędkość`, żeby zobaczyć prędkości z grafu/OSMnx,
+- włączyć warstwę `Liczba pasów`, żeby zobaczyć atrybut `lanes` z OSM,
+- przełączyć tło mapy na `Bez tła`.
+
+Wyniki ostatniego zapytania są zapisywane w:
+
+```text
+data/results/route_web/
+```
+
 ## Sprawdzenie działania modelu warstwowego
 
 Po uruchomieniu analizy można sprawdzić, z jakich źródeł danych korzystały krawędzie trasy:
@@ -240,7 +353,7 @@ Przykład interpretacji:
 Trasa najkrótsza może być krótsza dystansowo, ale prowadzić przez odcinki o większym natężeniu ruchu lub niższej średniej prędkości. Trasa skorygowana może być dłuższa, ale mieć niższy koszt po uwzględnieniu danych ZDM.
 ```
 
-Czasy przejazdu należy traktować jako **koszt porównawczy tras**, a nie dokładną predykcję czasu znaną z systemów komercyjnych. Model nie uwzględnia wszystkich czynników, takich jak sygnalizacja świetlna, kolejki na skrzyżowaniach, manewry skrętu czy aktualny ruch live.
+Czasy przejazdu należy traktować jako **koszt porównawczy tras**, a nie dokładną predykcję czasu znaną z systemów komercyjnych. Model uwzględnia uproszczoną karę za skrzyżowania i węzły z sygnalizacją, ale nadal nie modeluje kolejek na skrzyżowaniach, manewrów skrętu ani aktualnego ruchu live.
 
 ## Odtworzenie danych prędkości ZDM od zera
 

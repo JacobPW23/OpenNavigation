@@ -38,12 +38,14 @@ RAW_TOPIC = "warszawa-raw-weather"
 
 OUTPUT_PATH = "/app/data/processed/weather_observations"
 CHECKPOINT_PATH = "/app/data/processed/checkpoints/weather_observations_stream"
+SPARK_KAFKA_PACKAGE = "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.1"
 
 
 spark = (
     SparkSession.builder
     .appName("WeatherKafkaTransformations")
     .config("spark.sql.shuffle.partitions", "4")
+    .config("spark.jars.packages", SPARK_KAFKA_PACKAGE)
     .getOrCreate()
 )
 

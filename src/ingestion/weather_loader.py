@@ -12,6 +12,7 @@ jako jedną wiadomość w Kafce.
 """
 
 import json
+import os
 import time
 from datetime import datetime, timezone
 
@@ -19,7 +20,7 @@ import requests
 from confluent_kafka import Producer
 
 
-KAFKA_BOOTSTRAP_SERVERS = "localhost:9092"
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "localhost:9092")
 TOPIC = "warszawa-raw-weather"
 
 # Przyjęte współrzędne dla centrum Warszawy.
@@ -27,6 +28,9 @@ WARSAW_LAT = 52.2297
 WARSAW_LON = 21.0122
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
+FORECAST_DAYS = int(os.getenv("WEATHER_FORECAST_DAYS", "16"))
+PAST_DAYS = int(os.getenv("WEATHER_PAST_DAYS", "30"))
+PRODUCER_FLUSH_TIMEOUT_SECONDS = int(os.getenv("KAFKA_PRODUCER_FLUSH_TIMEOUT_SECONDS", "10"))
 
 
 def delivery_report(err, msg):
@@ -52,7 +56,8 @@ def fetch_weather() -> dict:
             "visibility",
             "weather_code",
         ]),
-        "forecast_days": 1,
+        "forecast_days": FORECAST_DAYS,
+        "past_days": PAST_DAYS,
         "timezone": "Europe/Warsaw",
     }
 
@@ -93,7 +98,10 @@ def main():
 
     payload = json.dumps(data, ensure_ascii=False)
 
-    print(f"2. Wysyłanie danych do Kafki: topic={TOPIC}")
+    print(
+        "2. Wysyłanie danych do Kafki: "
+        f"bootstrap={KAFKA_BOOTSTRAP_SERVERS}, topic={TOPIC}"
+    )
     producer.produce(
         TOPIC,
         key="warsaw-weather",
@@ -101,7 +109,15 @@ def main():
         callback=delivery_report,
     )
 
-    producer.flush()
+    remaining = producer.flush(PRODUCER_FLUSH_TIMEOUT_SECONDS)
+    if remaining > 0:
+        raise RuntimeError(
+            "Nie udało się wysłać danych pogodowych do Kafki. "
+            f"Broker {KAFKA_BOOTSTRAP_SERVERS} nie odpowiada albo topic jest niedostępny. "
+            "Uruchom najpierw `docker compose up -d` i sprawdź "
+            "`docker compose exec opennavigation bash scripts/kafka_status.sh`."
+        )
+
     print("Gotowe. Dane pogodowe znajdują się w Kafce.")
 
 

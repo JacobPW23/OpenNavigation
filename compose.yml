@@ -6,12 +6,17 @@ services:
     ports:
       - "9092:9092"   # Kafka broker
       - "4040:4040"   # Spark UI, when a Spark job is running
+      - "8050:8050"   # Route web UI
     volumes:
       - ./src:/app/src
       - ./data:/app/data
       - ./docs:/app/docs
+      - ./scripts:/app/scripts
     environment:
       PYTHONUNBUFFERED: "1"
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-localhost:9092}"
+      WEATHER_PAST_DAYS: "${WEATHER_PAST_DAYS:-30}"
+      WEATHER_FORECAST_DAYS: "${WEATHER_FORECAST_DAYS:-16}"
       TOMTOM_API_KEY: "${TOMTOM_API_KEY:-}"
       TOMTOM_FLOW_URL: "${TOMTOM_FLOW_URL:-https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json}"
       TOMTOM_POLL_INTERVAL_SECONDS: "${TOMTOM_POLL_INTERVAL_SECONDS:-300}"
